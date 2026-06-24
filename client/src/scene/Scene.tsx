@@ -4,6 +4,8 @@ import { OpeningObject } from './objects/OpeningObject';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { PermissionPrompt } from '../components/PermissionPrompt';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
+import { NebulaBackdrop } from './shaders/nebula/NebulaBackdrop';
+
 
 export function Scene() {
   const { beta, gamma, permissionState, requestPermission } =
@@ -45,6 +47,7 @@ export function Scene() {
             intensity={0.4} 
             color="#7a9eff" 
         />
+        <NebulaBackdrop intensity={0.8} />
         <Stars
             radius={50}
             depth={50}
