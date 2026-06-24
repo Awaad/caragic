@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import type {
   OrientationData,
   PermissionState,
@@ -14,51 +14,54 @@ export function useDeviceOrientation(): UseDeviceOrientationReturn {
   const [permissionState, setPermissionState] =
     useState<PermissionState>('unknown');
 
-  // Attach the orientation listener. Returns a cleanup function.
+  // Capture the first reading as the "neutral" position
+  const referenceRef = useRef<{ beta: number; gamma: number } | null>(null);
+
   const attachListener = useCallback(() => {
     const handler = (event: DeviceOrientationEvent) => {
-      setOrientation({
-        beta: event.beta ?? 0,
-        gamma: event.gamma ?? 0,
-      });
+      const rawBeta = event.beta ?? 0;
+      const rawGamma = event.gamma ?? 0;
+
+      // First reading becomes the reference point
+      if (referenceRef.current === null) {
+        referenceRef.current = { beta: rawBeta, gamma: rawGamma };
+      }
+
+      // Report deltas from the reference, clamped to a reasonable range
+      const deltaBeta = clamp(rawBeta - referenceRef.current.beta, -45, 45);
+      const deltaGamma = clamp(rawGamma - referenceRef.current.gamma, -45, 45);
+
+      setOrientation({ beta: deltaBeta, gamma: deltaGamma });
     };
+
     window.addEventListener('deviceorientation', handler);
     return () => window.removeEventListener('deviceorientation', handler);
   }, []);
 
-  // On mount: detect whether we need explicit permission (iOS 13+).
   useEffect(() => {
     const DOE = getDeviceOrientationEventClass();
-
     if (!DOE) {
-      // SSR or environment without orientation API
       setPermissionState('denied');
       return;
     }
 
     const needsPermission = typeof DOE.requestPermission === 'function';
-
     if (needsPermission) {
-      // iOS — wait for a user gesture to call requestPermission()
       setPermissionState('prompt');
       return;
     }
 
-    // Android / desktop — attach immediately
     const cleanup = attachListener();
     setPermissionState('granted');
     return cleanup;
   }, [attachListener]);
 
-  // Called by the PermissionPrompt button on iOS.
   const requestPermission = useCallback(async () => {
     const DOE = getDeviceOrientationEventClass();
-
     if (!DOE?.requestPermission) {
       setPermissionState('denied');
       return;
     }
-
     try {
       const result = await DOE.requestPermission();
       if (result === 'granted') {
@@ -78,4 +81,8 @@ export function useDeviceOrientation(): UseDeviceOrientationReturn {
     permissionState,
     requestPermission,
   };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
