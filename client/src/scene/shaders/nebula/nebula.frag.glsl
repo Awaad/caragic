@@ -1,46 +1,39 @@
 #include "../lib/noise.glsl"
-#include "../lib/color.glsl"
 
 uniform float uTime;
 uniform float uIntensity;
 varying vec2 vUv;
 
 void main() {
-  // Center coords so noise is symmetric around the gem
-  vec2 p = vUv * 3.0 - 1.5;
+  // Larger scale = bigger, softer cloud shapes (was 3.0, too detailed)
+  vec2 p = vUv * 1.8 - 0.9;
 
-  // Slow time-based drift
-  float t = uTime * 0.03;
+  float t = uTime * 0.02;
 
-  // Domain warping: distort the noise lookup with another noise field.
-  // This is what gives nebulas their flowing, wispy structure rather
-  // than uniform clouds.
+  // Domain warp with much gentler distortion
   vec2 warp = vec2(
-    fbm(p + vec2(t, 0.0)),
-    fbm(p + vec2(0.0, t))
+    fbm(p * 0.5 + vec2(t, 0.0)),
+    fbm(p * 0.5 + vec2(0.0, t))
   );
 
-  // Sample fbm at the warped position
-  float n = fbm(p + warp * 1.5);
+  float n = fbm(p + warp * 0.6);
 
-  // Map noise to color via cosine palette.
-  // These constants were chosen for deep space — purples, blues,
-  // with hints of pink. Adjust to taste.
-  vec3 color = palette(
-    n,
-    vec3(0.1, 0.05, 0.2),   // base — deep purple
-    vec3(0.4, 0.3, 0.5),    // amplitude — pinks and blues
-    vec3(1.0, 1.0, 1.0),    // frequency
-    vec3(0.0, 0.2, 0.4)     // phase — shifts hues
-  );
+  // CRITICAL: heavily bias toward darkness.
+  // Only the top ~30% of noise values produce visible color.
+  // Everything else is pure black space.
+  float density = smoothstep(0.1, 0.6, n);
 
-  // Mask: nebula brighter in the middle, fades to black at edges.
-  // This keeps the corners dark so stars and the gem dominate.
+  // Two-color soft gradient — deep blue base, hints of magenta in brighter parts
+  vec3 deepSpace = vec3(0.04, 0.02, 0.12);    // very dark indigo
+  vec3 glow = vec3(0.45, 0.25, 0.65);          // soft violet-magenta
+  vec3 color = mix(deepSpace, glow, density);
+
+  // Radial mask — strong vignette so corners stay dark
   float dist = length(vUv - 0.5);
-  float mask = smoothstep(0.8, 0.1, dist);
+  float mask = smoothstep(0.9, 0.2, dist);
 
-  // Soft brightness curve — nebula is most visible at noise mid-range
-  float brightness = smoothstep(-0.3, 0.5, n) * mask * uIntensity;
+  // Overall brightness is LOW. Background, not foreground.
+  float brightness = density * mask * uIntensity * 0.35;
 
-  gl_FragColor = vec4(color * brightness, brightness);
+  gl_FragColor = vec4(color * brightness, 1.0);
 }
