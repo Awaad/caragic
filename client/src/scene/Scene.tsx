@@ -5,7 +5,8 @@ import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { PermissionPrompt } from '../components/PermissionPrompt';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { NebulaBackdrop } from './shaders/nebula/NebulaBackdrop';
-
+import { Fragments } from './objects/Fragments';
+import { ParticleStreaks } from './transitions/ParticleStreaks';
 
 export function Scene() {
   const { beta, gamma, permissionState, requestPermission } =
@@ -43,9 +44,15 @@ export function Scene() {
         <ambientLight intensity={0.3} />
         <pointLight position={[5, 5, 5]} intensity={1.2} />
         <pointLight 
-            position={[-5, -3, -5]} 
-            intensity={0.4} 
-            color="#7a9eff" 
+            position={[3, 2, 4]} 
+            intensity={2.5} 
+            color="#ffffff" 
+            distance={8}
+        />
+        <directionalLight
+            position={[4, 6, 3]}
+            intensity={3}
+            color="#ffffff"
         />
         <NebulaBackdrop intensity={0.8} />
         <Stars
@@ -67,6 +74,8 @@ export function Scene() {
             opacity={0.6}
         />
         <OpeningObject tiltX={beta} tiltY={gamma} />
+        <Fragments />
+        <ParticleStreaks />
         <EffectComposer>
             <Bloom
                 intensity={1.4}
