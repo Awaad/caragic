@@ -1,0 +1,31 @@
+import type { Mode } from '../modes/types';
+
+export type Phase =
+  | 'opening'
+  | 'cracking'
+  | 'shattering'
+  | 'warping'
+  | 'round'
+  | 'capturing'
+  | 'reveal'
+  | 'closed';
+
+export interface FlowState {
+  mode: Mode;
+  phase: Phase;
+  roundIndex: number;
+  energy: number;
+  answers: Array<{ roundId: string; optionId: string }>;
+}
+
+export interface FlowActions {
+  setPhase: (phase: Phase) => void;
+  setMode: (mode: Mode) => void;
+  incrementEnergy: (amount: number) => void;
+  resetEnergy: () => void;
+  advanceRound: () => void;
+  recordAnswer: (roundId: string, optionId: string) => void;
+  reset: () => void;
+}
+
+export type FlowContextValue = FlowState & FlowActions;
