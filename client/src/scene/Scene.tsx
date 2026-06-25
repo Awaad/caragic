@@ -1,14 +1,15 @@
 import { Canvas } from '@react-three/fiber';
-import { Environment, Lightformer, Stars, Sparkles } from '@react-three/drei';
+import { Environment, Lightformer } from '@react-three/drei';
 import { OpeningObject } from './objects/OpeningObject';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { PermissionPrompt } from '../components/PermissionPrompt';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { NebulaBackdrop } from './shaders/nebula/NebulaBackdrop';
 import { Fragments } from './objects/Fragments';
-import { ParticleStreaks } from './transitions/ParticleStreaks';
 import { WarpCamera } from './transitions/WarpCamera';
 import { BurstFlash } from './transitions/BurstFlash';
+import { WarpVolume } from './transitions/WarpVolume';
+import { WarpStars } from './transitions/WarpStars';
 
 export function Scene() {
   const { beta, gamma, permissionState, requestPermission } =
@@ -22,9 +23,12 @@ export function Scene() {
         gl={{ antialias: true, alpha: true }}
         style={{ position: 'absolute', inset: 0 }}
         >
-        
-        <WarpCamera />
         <ResponsiveCamera />
+        <WarpCamera />
+        <NebulaBackdrop />
+
+        <WarpStars />
+        <WarpVolume />
         <Environment background={false} resolution={256}>
             <Lightformer
                 intensity={2}
@@ -45,42 +49,18 @@ export function Scene() {
                 color="#ff88aa"
             />
         </Environment>
-        <ambientLight intensity={0.3} />
-        <pointLight position={[5, 5, 5]} intensity={1.2} />
+        <ambientLight intensity={0.2} />
+        <directionalLight position={[4, 6, 3]} intensity={3} color="#ffffff" />
         <pointLight 
             position={[3, 2, 4]} 
             intensity={2.5} 
             color="#ffffff" 
             distance={8}
         />
-        <directionalLight
-            position={[4, 6, 3]}
-            intensity={3}
-            color="#ffffff"
-        />
-        <BurstFlash />
-        <NebulaBackdrop intensity={0.8} />
-        <Stars
-            radius={50}
-            depth={50}
-            count={3000}
-            factor={4}
-            saturation={0}
-            fade
-            speed={0.5}
-            />
-
-            <Sparkles
-            count={40}
-            scale={6}
-            size={3}
-            speed={0.3}
-            color="#88aaff"
-            opacity={0.6}
-        />
         <OpeningObject tiltX={beta} tiltY={gamma} />
         <Fragments />
-        <ParticleStreaks />
+        <BurstFlash />
+        
         <EffectComposer>
             <Bloom
                 intensity={1.4}

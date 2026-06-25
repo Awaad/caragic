@@ -20,6 +20,7 @@ const initialState: FlowState = {
   roundIndex: 0,
   energy: 0,
   answers: [],
+  hasWarpedBefore: false,
 };
 
 export function FlowProvider({
@@ -58,6 +59,10 @@ export function FlowProvider({
     }));
   }, []);
 
+  const markWarpComplete = useCallback(() => {
+    setState((s) => ({ ...s, hasWarpedBefore: true }));
+  }, []);
+
   const reset = useCallback(() => {
     setState({ ...initialState, mode: state.mode });
   }, [state.mode]);
@@ -71,6 +76,7 @@ export function FlowProvider({
       resetEnergy,
       advanceRound,
       recordAnswer,
+      markWarpComplete,
       reset,
     }),
     [
@@ -81,6 +87,7 @@ export function FlowProvider({
       resetEnergy,
       advanceRound,
       recordAnswer,
+      markWarpComplete,
       reset,
     ],
   );
