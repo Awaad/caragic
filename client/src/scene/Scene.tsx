@@ -7,6 +7,8 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { NebulaBackdrop } from './shaders/nebula/NebulaBackdrop';
 import { Fragments } from './objects/Fragments';
 import { ParticleStreaks } from './transitions/ParticleStreaks';
+import { WarpCamera } from './transitions/WarpCamera';
+import { BurstFlash } from './transitions/BurstFlash';
 
 export function Scene() {
   const { beta, gamma, permissionState, requestPermission } =
@@ -20,6 +22,8 @@ export function Scene() {
         gl={{ antialias: true, alpha: true }}
         style={{ position: 'absolute', inset: 0 }}
         >
+        
+        <WarpCamera />
         <ResponsiveCamera />
         <Environment background={false} resolution={256}>
             <Lightformer
@@ -54,6 +58,7 @@ export function Scene() {
             intensity={3}
             color="#ffffff"
         />
+        <BurstFlash />
         <NebulaBackdrop intensity={0.8} />
         <Stars
             radius={50}
@@ -96,6 +101,7 @@ export function Scene() {
 
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
+
 
 function ResponsiveCamera() {
   const { camera, size } = useThree();

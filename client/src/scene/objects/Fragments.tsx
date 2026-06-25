@@ -76,16 +76,24 @@ export function Fragments() {
         f.rotation.identity();
       }
     }
-    if (phase !== 'shattering' && shatterStart.current !== null) {
-      shatterStart.current = null;
+    if (phase !== 'shattering' && phase !== 'warping' && shatterStart.current !== null) {
+        shatterStart.current = null;
     }
 
-    mesh.visible = phase === 'shattering';
-    if (phase !== 'shattering' || shatterStart.current === null) return;
+    const isActive = phase === 'shattering' || phase === 'warping';
+    mesh.visible = isActive;
+    if (!isActive || shatterStart.current === null) return;
 
     const elapsed = frameState.clock.elapsedTime - shatterStart.current;
-    const t = Math.min(1, elapsed / FLY_DURATION);
+
+    // Fragments hold at origin until burst frame, then fly outward
+    const BURST_AT = 0.15;
+    const burstElapsed = Math.max(0, elapsed - BURST_AT);
+    const t = Math.min(1, burstElapsed / FLY_DURATION);
     const easedT = 1 - Math.pow(1 - t, 3);
+
+    // Hide fragments before burst — they exist but are invisible
+    const preBurst = elapsed < BURST_AT;
 
     for (let i = 0; i < state.fragments.length; i++) {
       const f = state.fragments[i];
@@ -103,7 +111,16 @@ export function Fragments() {
       state.tempQuat.setFromEuler(state.tempEuler);
       f.rotation.multiply(state.tempQuat);
 
-      const fadeOut = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+      let fadeOut: number;
+        if (preBurst) {
+        fadeOut = 0;  // invisible before burst
+        } else if (phase === 'shattering') {
+        fadeOut = 1;
+        } else {
+        const warpProgress = Math.min(1, (frameState.clock.elapsedTime - shatterStart.current - 1.0) / 0.7);
+        fadeOut = 1 - warpProgress;
+        }
+        
       state.tempScale.setScalar(f.scale * fadeOut);
 
       state.tempMatrix.compose(f.position, f.rotation, state.tempScale);

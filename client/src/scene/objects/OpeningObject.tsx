@@ -63,22 +63,30 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
       shatterStart.current = null;
     }
 
-    // Existing shatter block — replace with this:
+    // shatter block
     if (phase === 'shattering' && shatterStart.current !== null) {
-      const t = Math.min(1, (state.clock.elapsedTime - shatterStart.current) / SHATTER_DURATION);
-      group.scale.setScalar(1 + t * 1.0);
-      group.visible = t < 0.3;  // disappear quickly, fragments take over
+    const elapsed = state.clock.elapsedTime - shatterStart.current;
 
-      // After fragment flight completes, advance to warp
-      if (t >= 1) {
-        setPhase('warping');
-      }
-      return;
+    // Pre-burst: gem rapidly inflates (impact frame)
+    if (elapsed < 0.15) {
+      const localT = elapsed / 0.15;
+      // Aggressive inflate — gem looks like it's about to pop
+      group.scale.setScalar(1 + localT * 0.6);
+      group.visible = true;
+    } else {
+      // Post-burst: hard cut to invisible. Gem is GONE.
+      group.visible = false;
     }
+
+    if (elapsed >= SHATTER_DURATION) {
+      setPhase('warping');
+    }
+    return;
+  }
 
     // --- Normal animation below this line ---
 
-    group.visible = true;
+    group.visible = phase === 'opening' || phase === 'cracking';
 
     const tiltMagnitude = Math.min(1, (Math.abs(tiltX) + Math.abs(tiltY)) / 30);
     const idleSpeed = 0.25 * (1 - tiltMagnitude);
