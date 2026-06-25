@@ -1,6 +1,7 @@
 import { FlowProvider } from './flow/FlowContext';
 import { parseModeFromUrl } from './flow/parseModeFromUrl';
 import { Scene } from './scene/Scene';
+import { Overlay } from './components/overlay/Overlay';
 import { DebugOverlay } from './components/DebugOverlay';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
             radial-gradient(circle at center, #0a0a1f 0%, #020208 100%)`,
         }}>
         <Scene />
+        <Overlay />
         <DebugOverlay />
       </div>
     </FlowProvider>

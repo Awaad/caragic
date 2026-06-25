@@ -24,7 +24,7 @@ export interface WarpProgress {
  * Consumers should read .t, .velocity, etc. inside their own useFrame.
  */
 export function useWarpProgress(): WarpProgress {
-  const { phase, hasWarpedBefore } = useFlow();
+  const { phase, hasWarpedBefore, setPhase } = useFlow();
   const warpStart = useRef<number | null>(null);
   const isFirstWarp = useRef(false);
 
@@ -73,7 +73,16 @@ export function useWarpProgress(): WarpProgress {
     progress.current.t = t;
     progress.current.velocity = velocity;
     progress.current.isFirstWarp = isFirstWarp.current;
+
+    if (t >= 1) {
+      // Warp complete — advance to round phase.
+      // Done here so any consumer that forgot to advance still works.
+      if (phase === 'warping') {
+        setPhase('round');
+      }
+    }
   });
+
 
   return progress.current;
 }
