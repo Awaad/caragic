@@ -10,6 +10,7 @@ import { WarpCamera } from './transitions/WarpCamera';
 import { BurstFlash } from './transitions/BurstFlash';
 import { WarpVolume } from './transitions/WarpVolume';
 import { WarpStars } from './transitions/WarpStars';
+import { Companion } from './objects/Companion';
 
 export function Scene() {
   const { beta, gamma, permissionState, requestPermission } =
@@ -58,6 +59,7 @@ export function Scene() {
             distance={8}
         />
         <OpeningObject tiltX={beta} tiltY={gamma} />
+        <Companion />
         <Fragments />
         <BurstFlash />
         
