@@ -13,21 +13,26 @@ const HEADER_Y = 0.85;
 const CHOICES_START_Y = 0.15;
 const PANEL_Z = 1.2;
 
-// Alternate tilts: header tilts right, choices alternate sides
 function getRotationForIndex(i: number): [number, number, number] {
-  // Even index: rotated right (~18°); odd: rotated left (~18°)
   const yRot = i % 2 === 0 ? 0.32 : -0.32;
-  const xRot = -0.08; // slight tip back
+  const xRot = -0.08;
   return [xRot, yRot, 0];
 }
 
-function getAccentColor(mode: Mode): string {
+// Primary + complementary "electric" stop per mode, echoing the magenta/cyan/
+// violet pairings in the reference art.
+function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
-    case 'dating': return '#ff3ad8';
-    case 'friendship': return '#3aeae0';
-    case 'professional': return '#3a8aff';
-    case 'mix': return '#c060d8';
-    default: return '#88aaff';
+    case 'dating':
+      return { primary: '#ff3ad8', secondary: '#00e5ff' };
+    case 'friendship':
+      return { primary: '#3aeae0', secondary: '#b14aff' };
+    case 'professional':
+      return { primary: '#3a8aff', secondary: '#2ee6ff' };
+    case 'mix':
+      return { primary: '#c060d8', secondary: '#3affd0' };
+    default:
+      return { primary: '#88aaff', secondary: '#46f0ff' };
   }
 }
 
@@ -38,7 +43,7 @@ export function RoundPanel() {
     roundIndex,
     selectedOptionId,
     roundStarted,
-    coreInPosition, // see useCoreState — only render when core has flown into position
+    coreInPosition,
     setSelectedOption,
   } = useFlow();
 
@@ -48,17 +53,16 @@ export function RoundPanel() {
   const round = content.rounds[roundIndex];
   if (!round || round.type !== 'choice') return null;
 
-  const accent = getAccentColor(mode);
+  const { primary: accent, secondary } = getAccentColors(mode);
   const selectedOption = selectedOptionId
     ? round.options.find((o) => o.id === selectedOptionId)
     : null;
 
-  // Header rotation = 0 (panel header is "the question card" — always main axis)
   const headerRotation: [number, number, number] = [-0.08, 0.18, 0];
 
   return (
     <group>
-      {/* Header — question, always visible during round */}
+      {/* Header */}
       <PanelFrame
         width={HEADER_WIDTH}
         height={HEADER_HEIGHT}
@@ -68,12 +72,15 @@ export function RoundPanel() {
         rotation={headerRotation}
         visible
         accentColor={accent}
+        accentColorSecondary={secondary}
+        variant="header"
       />
 
-      {/* Choice frames */}
+      {/* Choices */}
       {round.options.map((option, i) => {
         const isSelected = selectedOptionId === option.id;
-        const isUnselected = selectedOptionId !== null && selectedOptionId !== option.id;
+        const isUnselected =
+          selectedOptionId !== null && selectedOptionId !== option.id;
         const rotation = getRotationForIndex(i);
 
         return (
@@ -87,6 +94,8 @@ export function RoundPanel() {
             rotation={rotation}
             visible={!isUnselected}
             accentColor={accent}
+            accentColorSecondary={secondary}
+            variant="choice"
             selected={isSelected}
             dimmed={isUnselected}
             onClick={
@@ -98,7 +107,7 @@ export function RoundPanel() {
         );
       })}
 
-      {/* Reveal text — appears under selected choice with typewriter effect */}
+      {/* Reveal text */}
       {selectedOption && (
         <group
           position={[
