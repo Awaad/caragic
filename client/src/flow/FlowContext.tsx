@@ -21,6 +21,8 @@ const initialState: FlowState = {
   energy: 0,
   answers: [],
   hasWarpedBefore: false,
+  selectedOptionId: null,
+  roundStarted: false,
 };
 
 export function FlowProvider({
@@ -49,7 +51,7 @@ export function FlowProvider({
   }, []);
 
   const advanceRound = useCallback(() => {
-    setState((s) => ({ ...s, roundIndex: s.roundIndex + 1 }));
+    setState((s) => ({ ...s, roundIndex: s.roundIndex + 1, roundStarted: false, selectedOptionId: null  }));
   }, []);
 
   const recordAnswer = useCallback((roundId: string, optionId: string) => {
@@ -62,6 +64,16 @@ export function FlowProvider({
   const markWarpComplete = useCallback(() => {
     setState((s) => ({ ...s, hasWarpedBefore: true }));
   }, []);
+
+  const setSelectedOption = useCallback((id: string | null) => {
+    setState((s) => ({ ...s, selectedOptionId: id }));
+  }, []);
+
+  const startRound = useCallback(() => {
+    setState((s) => ({ ...s, roundStarted: true }));
+  }, []);
+
+  
 
   const reset = useCallback(() => {
     setState({ ...initialState, mode: state.mode });
@@ -77,6 +89,8 @@ export function FlowProvider({
       advanceRound,
       recordAnswer,
       markWarpComplete,
+      setSelectedOption,
+      startRound,
       reset,
     }),
     [
@@ -88,6 +102,8 @@ export function FlowProvider({
       advanceRound,
       recordAnswer,
       markWarpComplete,
+      setSelectedOption,
+      startRound,
       reset,
     ],
   );

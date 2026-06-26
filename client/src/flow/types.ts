@@ -17,6 +17,8 @@ export interface FlowState {
   energy: number;
   answers: Array<{ roundId: string; optionId: string }>;
   hasWarpedBefore: boolean;
+  selectedOptionId: string | null;
+  roundStarted: boolean;
 }
 
 export interface FlowActions {
@@ -28,6 +30,8 @@ export interface FlowActions {
   recordAnswer: (roundId: string, optionId: string) => void;
   markWarpComplete: () => void;
   reset: () => void;
+  setSelectedOption: (id: string | null) => void;
+  startRound: () => void;
 }
 
 export type FlowContextValue = FlowState & FlowActions;

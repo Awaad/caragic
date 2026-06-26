@@ -3,7 +3,8 @@ import { useFlow } from './useFlow';
 import { getContentForMode } from '../modes/content';
 import type { ShardState } from '../modes/types';
 
-const TOTAL_SHARDS = 7;
+const TOTAL_SHARDS = 6;
+const INVITATION_SHARD_INDEX = 0;
 
 interface UseRoundShardsResult {
   shards: ShardState[];
@@ -23,7 +24,7 @@ interface UseRoundShardsResult {
 export function useRoundShards(
   selectedOptionId: string | null,
 ): UseRoundShardsResult {
-  const { mode, phase, roundIndex } = useFlow();
+  const { mode, phase, roundIndex, roundStarted } = useFlow();
 
   return useMemo(() => {
     const content = getContentForMode(mode);
@@ -33,15 +34,27 @@ export function useRoundShards(
       role: 'idle',
     }));
 
-    if (phase !== 'round' || !currentRound || currentRound.type !== 'choice') {
-      // Non-round phases: companion is just present
-      if (phase === 'capturing' || phase === 'reveal') {
-        for (const s of shards) s.role = 'ambient';
-      }
+    if (phase === 'capturing' || phase === 'reveal') {
+      for (const s of shards) s.role = 'ambient';
       return { shards, activeCount: 0 };
     }
 
-    // Choice round: assign active shards to options
+    if (phase !== 'round' || !currentRound) {
+      return { shards, activeCount: 0 };
+    }
+
+    // Round phase but not started yet — show the invitation shard
+    if (!roundStarted) {
+      shards[INVITATION_SHARD_INDEX] = { role: 'invitation' };
+      // Other shards remain idle (orbiting in background)
+      return { shards, activeCount: 0 };
+    }
+
+    // Round started — only show choice shards
+    if (currentRound.type !== 'choice') {
+      return { shards, activeCount: 0 };
+    }
+
     const options = currentRound.options;
     const activeCount = options.length;
 
@@ -61,5 +74,5 @@ export function useRoundShards(
     }
 
     return { shards, activeCount };
-  }, [mode, phase, roundIndex, selectedOptionId]);
+  }, [mode, phase, roundIndex, selectedOptionId, roundStarted]);
 }
