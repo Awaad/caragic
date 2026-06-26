@@ -63,6 +63,7 @@ export function Companion() {
 
   const {
     phase,
+    setPhase,
     hasWarpedBefore,
     mode,
     roundIndex,
@@ -107,12 +108,21 @@ export function Companion() {
     recordAnswer(round.id, selectedOptionId);
 
     const timer = setTimeout(() => {
-      setSelectedOption(null);
-      advanceRound();
+        setSelectedOption(null);
+        advanceRound();
+
+        // Check what the NEXT round is and route phase accordingly
+        const nextRound = content.rounds[roundIndex + 1];
+        if (!nextRound) {
+        setPhase('reveal');
+        } else if (nextRound.type === 'capture') {
+        setPhase('capturing');
+        }
+        // else: next is choice, stay in 'round' phase
     }, SELECTION_REVEAL_DELAY * 1000);
 
     return () => clearTimeout(timer);
-  }, [selectedOptionId, mode, roundIndex, recordAnswer, advanceRound, setSelectedOption]);
+    }, [selectedOptionId, mode, roundIndex, recordAnswer, advanceRound, setSelectedOption, setPhase]);
 
   const shouldBeVisible =
     hasWarpedBefore &&
