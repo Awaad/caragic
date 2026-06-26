@@ -11,6 +11,10 @@ import { BurstFlash } from './transitions/BurstFlash';
 import { WarpVolume } from './transitions/WarpVolume';
 import { WarpStars } from './transitions/WarpStars';
 import { Companion } from './objects/Companion';
+import { QuestionPanel } from './ui/QuestionPanel';
+import { CaptureForm3D } from './ui/CaptureForm3D';
+import { Reveal3D } from './ui/Reveal3D';
+
 
 export function Scene() {
   const { beta, gamma, permissionState, requestPermission } =
@@ -60,6 +64,9 @@ export function Scene() {
         />
         <OpeningObject tiltX={beta} tiltY={gamma} />
         <Companion />
+        <QuestionPanel selectedOptionId={null} />
+        <CaptureForm3D />
+        <Reveal3D />
         <Fragments />
         <BurstFlash />
         
@@ -83,6 +90,7 @@ export function Scene() {
 
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
+
 
 
 function ResponsiveCamera() {
