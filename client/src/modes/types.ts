@@ -38,3 +38,12 @@ export interface ModeContent {
   rounds: Round[];
   reveal: ModeReveal;
 }
+
+export type ShardRole = 'active' | 'ambient' | 'idle';
+
+export interface ShardState {
+  role: ShardRole;
+  optionId?: string; // present when role === 'active' and tied to a choice
+  isSelected?: boolean;
+  isDimmed?: boolean;
+}
