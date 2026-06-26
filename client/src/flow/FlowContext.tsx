@@ -23,6 +23,7 @@ const initialState: FlowState = {
   hasWarpedBefore: false,
   selectedOptionId: null,
   roundStarted: false,
+  coreInPosition: false,
 };
 
 export function FlowProvider({
@@ -73,7 +74,9 @@ export function FlowProvider({
     setState((s) => ({ ...s, roundStarted: true }));
   }, []);
 
-  
+  const setCoreInPosition = useCallback((inPosition: boolean) => {
+    setState((s) => ({ ...s, coreInPosition: inPosition }));
+  }, []);
 
   const reset = useCallback(() => {
     setState({ ...initialState, mode: state.mode });
@@ -91,6 +94,7 @@ export function FlowProvider({
       markWarpComplete,
       setSelectedOption,
       startRound,
+      setCoreInPosition,
       reset,
     }),
     [

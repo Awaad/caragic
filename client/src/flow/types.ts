@@ -19,6 +19,7 @@ export interface FlowState {
   hasWarpedBefore: boolean;
   selectedOptionId: string | null;
   roundStarted: boolean;
+  coreInPosition: boolean;
 }
 
 export interface FlowActions {
@@ -32,6 +33,7 @@ export interface FlowActions {
   reset: () => void;
   setSelectedOption: (id: string | null) => void;
   startRound: () => void;
+  setCoreInPosition: (inPosition: boolean) => void;
 }
 
 export type FlowContextValue = FlowState & FlowActions;

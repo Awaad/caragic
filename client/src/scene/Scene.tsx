@@ -11,9 +11,9 @@ import { BurstFlash } from './transitions/BurstFlash';
 import { WarpVolume } from './transitions/WarpVolume';
 import { WarpStars } from './transitions/WarpStars';
 import { Companion } from './objects/Companion';
-import { QuestionPanel } from './ui/QuestionPanel';
 import { CaptureForm3D } from './ui/CaptureForm3D';
 import { Reveal3D } from './ui/Reveal3D';
+import { RoundPanel } from './ui/RoundPanel';
 
 
 export function Scene() {
@@ -64,7 +64,7 @@ export function Scene() {
         />
         <OpeningObject tiltX={beta} tiltY={gamma} />
         <Companion />
-        <QuestionPanel selectedOptionId={null} />
+        <RoundPanel />
         <CaptureForm3D />
         <Reveal3D />
         <Fragments />

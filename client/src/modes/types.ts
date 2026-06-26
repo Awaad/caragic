@@ -39,7 +39,7 @@ export interface ModeContent {
   reveal: ModeReveal;
 }
 
-export type ShardRole = 'active' | 'ambient' | 'idle' | 'invitation';
+export type ShardRole = 'active' | 'ambient' | 'idle' | 'invitation' | 'flying' | 'hidden';
 
 export interface ShardState {
   role: ShardRole;
