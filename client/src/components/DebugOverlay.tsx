@@ -16,7 +16,7 @@ const PHASES: Phase[] = [
 const MODES: Mode[] = ['dating', 'friendship', 'professional', 'mix'];
 
 export function DebugOverlay() {
-  const { mode, phase, roundIndex, energy, answers,  hasWarpedBefore, setMode, setPhase, reset } =
+  const { mode, phase, roundIndex, energy, answers,  hasWarpedBefore, roundStarted, coreInPosition, setMode, setPhase, reset } =
     useFlow();
 
   return (
@@ -76,6 +76,12 @@ export function DebugOverlay() {
       </div>
       <div>
         <strong>hasWarpedBefore:</strong> {String(hasWarpedBefore)}
+      </div>
+      <div>
+      <strong>roundStarted:</strong> {String(roundStarted)}
+      </div>
+      <div>
+        <strong>coreInPosition:</strong> {String(coreInPosition)}
       </div>
       <button
         onClick={reset}
