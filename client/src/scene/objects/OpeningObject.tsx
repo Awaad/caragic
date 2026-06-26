@@ -143,7 +143,16 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
   });
 
   return (
-    <group ref={groupRef} onClick={handleTap}>
+    <group ref={groupRef} onClick={
+        phase === 'opening' || phase === 'cracking'
+          ? handleTap
+          : undefined
+      }
+      raycast={
+        phase === 'opening' || phase === 'cracking'
+          ? undefined
+          : () => null
+      }>
       <Icosahedron ref={outerRef} args={[1, 0]}>
         {/* @ts-expect-error — drei MeshTransmissionMaterial loose JSX types */}
         <MeshTransmissionMaterial

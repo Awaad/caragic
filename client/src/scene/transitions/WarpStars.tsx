@@ -85,7 +85,7 @@ export function WarpStars() {
   });
 
   return (
-    <points ref={pointsRef} renderOrder={5}>
+    <points ref={pointsRef} renderOrder={5}  raycast={() => null}>
       <primitive object={geometry} attach="geometry" />
       <pointsMaterial
         size={0.08}

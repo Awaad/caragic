@@ -92,7 +92,7 @@ export function WarpVolume() {
   });
 
   return (
-    <points ref={pointsRef} visible={false} renderOrder={10}>
+    <points ref={pointsRef} visible={false} renderOrder={10} raycast={() => null}>
       <primitive object={geometry} attach="geometry" />
       <pointsMaterial
         ref={materialRef}
