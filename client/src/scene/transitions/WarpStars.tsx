@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import {
   AdditiveBlending,
@@ -7,6 +7,7 @@ import {
   type Points,
 } from 'three';
 import { useWarpProgress } from '../../flow/useWarpProgress';
+import { useFlow } from '../../flow/useFlow';
 
 const STAR_COUNT = 1500;
 const STAR_SPREAD = 50;        // cube edge length stars are distributed in
@@ -46,6 +47,7 @@ function createStars() {
 export function WarpStars() {
   const pointsRef = useRef<Points>(null);
   const warp = useWarpProgress();
+  const { phase, roundIndex } = useFlow();
 
   const geometry = useMemo(() => {
     const { positions, colors } = createStars();
@@ -54,6 +56,21 @@ export function WarpStars() {
     geo.setAttribute('color', new Float32BufferAttribute(colors, 3));
     return geo;
   }, []);
+
+  useEffect(() => {
+    // When entering a non-warp phase post-warp, reshuffle stars
+    if (phase === 'round' || phase === 'capturing' || phase === 'reveal') {
+      const posAttr = geometry.attributes.position;
+      const positions = posAttr.array as Float32Array;
+      const halfSpread = STAR_SPREAD / 2;
+      for (let i = 0; i < STAR_COUNT; i++) {
+        positions[i * 3 + 0] = (Math.random() - 0.5) * STAR_SPREAD;
+        positions[i * 3 + 1] = (Math.random() - 0.5) * STAR_SPREAD;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * STAR_SPREAD;
+      }
+      posAttr.needsUpdate = true;
+    }
+  }, [phase, roundIndex, geometry]);
 
   useFrame((_, delta) => {
     const points = pointsRef.current;
