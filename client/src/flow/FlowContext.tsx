@@ -7,6 +7,7 @@ import type {
   Phase,
 } from './types';
 
+
 export const FlowContext = createContext<FlowContextValue | null>(null);
 
 interface FlowProviderProps {
@@ -24,6 +25,7 @@ const initialState: FlowState = {
   selectedOptionId: null,
   roundStarted: false,
   coreInPosition: false,
+  pendingArrivalPhase: null,
 };
 
 export function FlowProvider({
@@ -78,6 +80,13 @@ export function FlowProvider({
     setState((s) => ({ ...s, coreInPosition: inPosition }));
   }, []);
 
+  const setPendingArrivalPhase = useCallback(
+    (phase: FlowState['pendingArrivalPhase']) => {
+      setState((s) => ({ ...s, pendingArrivalPhase: phase }));
+    },
+    [],
+  );
+
   const reset = useCallback(() => {
     setState({ ...initialState, mode: state.mode });
   }, [state.mode]);
@@ -95,6 +104,7 @@ export function FlowProvider({
       setSelectedOption,
       startRound,
       setCoreInPosition,
+      setPendingArrivalPhase,
       reset,
     }),
     [
@@ -108,6 +118,8 @@ export function FlowProvider({
       markWarpComplete,
       setSelectedOption,
       startRound,
+      setCoreInPosition,
+      setPendingArrivalPhase,
       reset,
     ],
   );

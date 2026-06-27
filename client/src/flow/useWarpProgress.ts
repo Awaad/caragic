@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useFlow } from './useFlow';
 
 export const FIRST_WARP_DURATION = 4.0;
-export const FAST_WARP_DURATION = 1.2;
+export const FAST_WARP_DURATION = 2.0;
 
 export interface WarpProgress {
   // Linear 0→1 across the warp
@@ -24,7 +24,7 @@ export interface WarpProgress {
  * Consumers should read .t, .velocity, etc. inside their own useFrame.
  */
 export function useWarpProgress(): WarpProgress {
-  const { phase, hasWarpedBefore, setPhase } = useFlow();
+  const { phase, hasWarpedBefore, setPhase, pendingArrivalPhase, setPendingArrivalPhase } = useFlow();
   const warpStart = useRef<number | null>(null);
   const isFirstWarp = useRef(false);
 
@@ -74,11 +74,10 @@ export function useWarpProgress(): WarpProgress {
     progress.current.velocity = velocity;
     progress.current.isFirstWarp = isFirstWarp.current;
 
-    if (t >= 1) {
-      // Warp complete — advance to round phase.
-      // Done here so any consumer that forgot to advance still works.
-      if (phase === 'warping') {
-        setPhase('round');
+    if (t >= 1 && phase === 'warping') {
+      setPhase(pendingArrivalPhase ?? 'round');
+      if (pendingArrivalPhase !== null) {
+        setPendingArrivalPhase(null);
       }
     }
   });

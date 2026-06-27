@@ -20,6 +20,7 @@ export interface FlowState {
   selectedOptionId: string | null;
   roundStarted: boolean;
   coreInPosition: boolean;
+  pendingArrivalPhase: Phase | null;
 }
 
 export interface FlowActions {
@@ -34,6 +35,7 @@ export interface FlowActions {
   setSelectedOption: (id: string | null) => void;
   startRound: () => void;
   setCoreInPosition: (inPosition: boolean) => void;
+  setPendingArrivalPhase: (phase: Phase | null) => void;
 }
 
 export type FlowContextValue = FlowState & FlowActions;
