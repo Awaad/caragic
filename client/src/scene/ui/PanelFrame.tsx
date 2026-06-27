@@ -37,8 +37,7 @@ const CORNER_RADIUS = 0.06;
 const FRAME_THICKNESS = 0.018;
 const BRACKET_THICK = 0.014;
 
-/* ---------------------------------------------------------------- geometry */
-
+// geometry 
 function roundedRectShape(w: number, h: number, r: number): Shape {
   const s = new Shape();
   const x = -w / 2;
@@ -73,14 +72,14 @@ function roundedRectPath(w: number, h: number, r: number): Path {
   return p;
 }
 
-/** Rounded-rect ring (outline only) used for the glowing border. */
+// Rounded-rect ring (outline only) used for the glowing border. 
 function frameGeometry(w: number, h: number, r: number, t: number): ShapeGeometry {
   const outer = roundedRectShape(w, h, r);
   outer.holes.push(roundedRectPath(w - t * 2, h - t * 2, Math.max(0.001, r - t)));
   return new ShapeGeometry(outer, 18);
 }
 
-/** L-shaped corner bracket, elbow at origin, arms toward +x / +y. */
+// L-shaped corner bracket, elbow at origin, arms toward +x / +y.
 function bracketGeometry(len: number, t: number): ShapeGeometry {
   const s = new Shape();
   s.moveTo(0, 0);
@@ -93,8 +92,7 @@ function bracketGeometry(len: number, t: number): ShapeGeometry {
   return new ShapeGeometry(s);
 }
 
-/* ----------------------------------------------------------------- shaders */
-
+// shaders
 const BORDER_VERT = /* glsl */ `
   varying vec2 vPos;
   void main() {
@@ -144,8 +142,7 @@ const HALO_FRAG = /* glsl */ `
   }
 `;
 
-/* --------------------------------------------------------------- component */
-
+// component 
 export function PanelFrame({
   width,
   height,
@@ -165,6 +162,9 @@ export function PanelFrame({
   const contentRef = useRef<Group>(null); // selected / dimmed scale
   const scanRef = useRef<Mesh>(null);
   const dotRef = useRef<Mesh>(null);
+
+  const visibilityChangedAt = useRef<number | null>(null);
+  const wasVisible = useRef(false);
 
   const colA = useMemo(() => new Color(accentColor), [accentColor]);
   const colB = useMemo(() => {
@@ -269,12 +269,56 @@ export function PanelFrame({
     const group = groupRef.current;
     if (!group) return;
 
-    // visibility scale-in / out
-    const target = visible ? 1 : 0;
-    const next = MathUtils.lerp(group.scale.x, target, 0.18);
-    group.scale.setScalar(next);
-    group.visible = next > 0.01;
-    if (!visible && next <= 0.01) return;
+    // Track when visibility flipped
+    if (visible && !wasVisible.current) {
+        visibilityChangedAt.current = t;
+        wasVisible.current = true;
+    } else if (!visible && wasVisible.current) {
+        visibilityChangedAt.current = t;
+        wasVisible.current = false;
+    }
+
+    // Emergence/collapse animation
+    let scaleTarget: number;
+    if (visible) {
+        const elapsed = visibilityChangedAt.current
+        ? t - visibilityChangedAt.current
+        : Infinity;
+        if (elapsed < 0.45) {
+        // Emergence curve: rapid grow with overshoot
+        const progress = elapsed / 0.45;
+        // Custom curve: starts at 0, overshoots 1.08 at ~0.7, settles to 1
+        const overshoot = 1.08;
+        if (progress < 0.7) {
+            // Accelerate to overshoot
+            const localT = progress / 0.7;
+            const eased = 1 - Math.pow(1 - localT, 2);
+            scaleTarget = overshoot * eased;
+        } else {
+            // Settle from overshoot to 1
+            const localT = (progress - 0.7) / 0.3;
+            scaleTarget = overshoot - (overshoot - 1) * localT;
+        }
+        } else {
+        scaleTarget = 1;
+        }
+    } else {
+        // Collapse: faster contract, slight inward acceleration
+        const elapsed = visibilityChangedAt.current
+        ? t - visibilityChangedAt.current
+        : Infinity;
+        if (elapsed < 0.3) {
+        const progress = elapsed / 0.3;
+        scaleTarget = 1 - Math.pow(progress, 2);
+        } else {
+        scaleTarget = 0;
+        }
+    }
+
+    group.scale.setScalar(scaleTarget);
+    group.visible = scaleTarget > 0.005;
+    if (!visible && scaleTarget <= 0.005) return;
+
 
     // selected / dimmed content scale
     if (contentRef.current) {
@@ -291,6 +335,22 @@ export function PanelFrame({
       borderMat.uniforms.uIntensity.value,
       bi,
       0.15,
+    );
+
+    // Compute emergence boost — extra intensity during the first 0.5s of being visible
+    let emergenceBoost = 1;
+    if (visible && visibilityChangedAt.current) {
+    const elapsed = t - visibilityChangedAt.current;
+    if (elapsed < 0.5) {
+        // Bright at start, decays to normal
+        emergenceBoost = 1 + (1 - elapsed / 0.5) * 1.5;
+    }
+    }
+
+    borderMat.uniforms.uIntensity.value = MathUtils.lerp(
+    borderMat.uniforms.uIntensity.value,
+    bi * emergenceBoost,    // multiply normal intensity by emergence boost
+    0.15,
     );
 
     // halo strength

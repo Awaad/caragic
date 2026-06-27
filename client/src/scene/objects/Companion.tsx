@@ -77,6 +77,7 @@ export function Companion() {
     setSelectedOption,
     startRound,
     setCoreInPosition,
+    setPendingArrivalPhase,
   } = useFlow();
   const warp = useWarpProgress();
 
@@ -102,10 +103,10 @@ export function Companion() {
   // Reset selection on round/phase change
   useEffect(() => {
     setSelectedOption(null);
-  }, [phase, roundIndex, setSelectedOption]);
+    }, [phase, roundIndex, setSelectedOption]);
 
-  // After selection: record answer + advance after delay
-  useEffect(() => {
+    // After selection: record answer + advance after delay
+    useEffect(() => {
     if (!selectedOptionId) return;
     const content = getContentForMode(mode);
     const round = content.rounds[roundIndex];
@@ -113,32 +114,48 @@ export function Companion() {
 
     recordAnswer(round.id, selectedOptionId);
 
-    // After reveal delay, start collapse
+    // After reveal pause: hide panel, then warp
     const collapseTimer = setTimeout(() => {
-        setCoreInPosition(false);  // panel starts shrinking via PanelFrame's scale lerp
+        setCoreInPosition(false); // panel collapses
     }, SELECTION_REVEAL_DELAY * 1000);
 
-    // 300ms later, advance round (core re-enters)
-    const advanceTimer = setTimeout(() => {
+    // Slightly later: trigger warp + advance round
+    const warpTimer = setTimeout(() => {
         setSelectedOption(null);
         advanceRound();
         const nextRound = content.rounds[roundIndex + 1];
-        if (!nextRound) setPhase('reveal');
-        else if (nextRound.type === 'capture') setPhase('capturing');
-    }, SELECTION_REVEAL_DELAY * 1000 + 200);
+        if (!nextRound) {
+        setPhase('reveal');
+        } else if (nextRound.type === 'capture') {
+        // Warp into capture phase
+        setPhase('warping');
+        setPendingArrivalPhase('capturing');
+        } else {
+        // Warp back into round phase for next choice round
+        setPhase('warping');
+        setPendingArrivalPhase('round');
+        }
+    }, SELECTION_REVEAL_DELAY * 1000 + 400);
 
     return () => {
         clearTimeout(collapseTimer);
-        clearTimeout(advanceTimer);
+        clearTimeout(warpTimer);
     };
     }, [selectedOptionId, mode, roundIndex, recordAnswer, advanceRound, setSelectedOption, setPhase, setCoreInPosition]);
+
+  useEffect(() => {
+    if (exitFlashLightRef.current) {
+        exitFlashLightRef.current.intensity = 0;
+    }
+  }, [phase, roundIndex]);
 
   const shouldBeVisible =
     hasWarpedBefore &&
     (phase === 'round' ||
       phase === 'capturing' ||
       phase === 'reveal' ||
-      phase === 'warping');
+      (phase === 'warping' && warp.isFirstWarp)
+    );
 
   useFrame((state, delta) => {
     const group = groupRef.current;
@@ -196,30 +213,28 @@ export function Companion() {
     const elapsed = state.clock.elapsedTime - coreEnterStart.current;
     const t = Math.min(1, elapsed / 0.7);
 
-    // Three-phase mirroring the exit but reversed:
-    // Phase 1 (0.0 - 0.25): flash builds and peaks
-    // Phase 2 (0.2 - 0.4): core materializes inside flash, expanding from invisible
-    // Phase 3 (0.35 - 1.0): flash decays, core settles into idle position/scale
-
-    // Flash light: peak at start, decay through
+    // Flash light — peaks at start, decays through
     if (exitFlashLightRef.current) {
-        let lightIntensity: number;
-        if (t < 0.1) {
-        lightIntensity = (t / 0.1) * (t / 0.1) * 80;
-        } else if (t < 0.4) {
-        const localT = (t - 0.1) / 0.3;
-        lightIntensity = 80 * (1 - localT * localT);
+    let lightIntensity = 0;
+    if (t >= 0.35 && t <= 0.75) {
+        if (t < 0.5) {
+        const localT = (t - 0.35) / 0.15;
+        lightIntensity = localT * localT * 80;
         } else {
-        lightIntensity = 0;
+        const localT = (t - 0.5) / 0.25;
+        lightIntensity = 80 * Math.max(0, 1 - localT * localT);
         }
-        exitFlashLightRef.current.intensity = lightIntensity * opacity;
+    }
+    // outside [0.35, 0.75]: lightIntensity stays 0
+    exitFlashLightRef.current.intensity = lightIntensity * opacity;
     }
 
-    // Core: invisible during flash buildup, emerges around t=0.25
     if (t < 0.2) {
+        // Hidden during flash buildup
         core.visible = false;
     } else {
         core.visible = true;
+
         // Position settles from above-and-back to center
         const settleT = Math.min(1, (t - 0.2) / 0.5);
         const easedSettle = 1 - Math.pow(1 - settleT, 3);
@@ -229,17 +244,30 @@ export function Companion() {
         0.4 * (1 - easedSettle),
         );
 
-        // Scale grows from 0 to idle scale
+        // Scale with overshoot — pop into existence
         const targetScale = 0.28;
-        const currentScale = targetScale * easedSettle;
-        core.scale.setScalar(currentScale * opacity);
+        const localT = settleT;
+        let scaleMultiplier: number;
+        if (localT < 0.65) {
+        // Overshoot
+        const sub = localT / 0.65;
+        const eased = 1 - Math.pow(1 - sub, 2);
+        scaleMultiplier = 1.25 * eased;  // overshoot to 125%
+        } else {
+        // Settle from overshoot back to 100%
+        const sub = (localT - 0.65) / 0.35;
+        scaleMultiplier = 1.25 - 0.25 * sub;
+        }
+        core.scale.setScalar(targetScale * scaleMultiplier * opacity);
 
-        // Spin slows as it settles
-        core.rotation.y += delta * (4 * (1 - settleT) + 0.4);
+        // Fast spin that decays to idle rotation speed
+        const spinSpeed = 6 * (1 - settleT) + 0.4;
+        core.rotation.y += delta * spinSpeed;
+        core.rotation.x += delta * spinSpeed * 0.3;
 
         if (coreMaterialRef.current) {
-        // Bright at emergence, settles to idle
-        const intensity = 8 * (1 - easedSettle) + 3 * easedSettle;
+        // Bright at emergence (12), settles to idle (3)
+        const intensity = 12 * (1 - easedSettle) + 3 * easedSettle;
         coreMaterialRef.current.emissiveIntensity = intensity * opacity;
         }
     }
@@ -305,21 +333,18 @@ export function Companion() {
 
     // Flash light: bell curve peaking at t=0.45
     if (exitFlashLightRef.current) {
-        let lightIntensity: number;
-        if (t < 0.35) {
-        lightIntensity = 0;
-        } else if (t < 0.5) {
-        // Ramp to peak
+    let lightIntensity = 0;
+    if (t >= 0.35 && t <= 0.75) {
+        if (t < 0.5) {
         const localT = (t - 0.35) / 0.15;
         lightIntensity = localT * localT * 80;
-        } else if (t < 0.75) {
-        // Decay from peak
-        const localT = (t - 0.5) / 0.25;
-        lightIntensity = 80 * (1 - localT * localT);
         } else {
-        lightIntensity = 0;
+        const localT = (t - 0.5) / 0.25;
+        lightIntensity = 80 * Math.max(0, 1 - localT * localT);
         }
-        exitFlashLightRef.current.intensity = lightIntensity * opacity;
+    }
+    // outside [0.35, 0.75]: lightIntensity stays 0
+    exitFlashLightRef.current.intensity = lightIntensity * opacity;
     }
 
     // Panel announces itself at t=0.5 — emerges from inside the flash
@@ -345,6 +370,13 @@ export function Companion() {
       const shard = shardsRef.current[i];
       const material = shardMaterialsRef.current[i];
       if (!shard) continue;
+
+      // Hide shards during warp transitions
+        if (phase === 'warping') {
+            shard.visible = false;
+            continue;
+        }
+        shard.visible = true;
 
       const cfg = configs[i];
       const angle = cfg.baseAngle + time * cfg.orbitSpeed;
