@@ -58,8 +58,9 @@ export function Companion() {
   const shardsRef = useRef<Array<Mesh | null>>([]);
   const shardMaterialsRef = useRef<Array<MeshStandardMaterial | null>>([]);
   
-  const [coreState, setCoreState] = useState<'idle' | 'exiting' | 'panel'>('idle');
+  const [coreState, setCoreState] = useState<'idle' | 'exiting' | 'panel' | 'entering'>('idle');
   const coreExitStart = useRef<number | null>(null);
+  const panelAnnounced = useRef(false);
 
   const {
     phase,
@@ -81,12 +82,14 @@ export function Companion() {
   const tempVec = useMemo(() => new Vector3(), []);
   const coreTargetForPanel = useMemo(() => new Vector3(0, 0.85, 1.2), []);
   const lastRoundIndex = useRef(roundIndex);
+  const coreEnterStart = useRef<number | null>(null);
+
+  
   // Reset core when round/phase changes
   useEffect(() => {
-    // Only reset when round actually advances (roundIndex change)
     if (roundIndex !== lastRoundIndex.current) {
         lastRoundIndex.current = roundIndex;
-        setCoreState('idle');
+        setCoreState('entering');  // animate in, not snap
         setCoreInPosition(false);
         coreExitStart.current = null;
         if (coreRef.current) coreRef.current.visible = true;
@@ -107,22 +110,25 @@ export function Companion() {
 
     recordAnswer(round.id, selectedOptionId);
 
-    const timer = setTimeout(() => {
-        setSelectedOption(null);
-        advanceRound();
-
-        // Check what the NEXT round is and route phase accordingly
-        const nextRound = content.rounds[roundIndex + 1];
-        if (!nextRound) {
-        setPhase('reveal');
-        } else if (nextRound.type === 'capture') {
-        setPhase('capturing');
-        }
-        // else: next is choice, stay in 'round' phase
+    // After reveal delay, start collapse
+    const collapseTimer = setTimeout(() => {
+        setCoreInPosition(false);  // panel starts shrinking via PanelFrame's scale lerp
     }, SELECTION_REVEAL_DELAY * 1000);
 
-    return () => clearTimeout(timer);
-    }, [selectedOptionId, mode, roundIndex, recordAnswer, advanceRound, setSelectedOption, setPhase]);
+    // 300ms later, advance round (core re-enters)
+    const advanceTimer = setTimeout(() => {
+        setSelectedOption(null);
+        advanceRound();
+        const nextRound = content.rounds[roundIndex + 1];
+        if (!nextRound) setPhase('reveal');
+        else if (nextRound.type === 'capture') setPhase('capturing');
+    }, SELECTION_REVEAL_DELAY * 1000 + 300);
+
+    return () => {
+        clearTimeout(collapseTimer);
+        clearTimeout(advanceTimer);
+    };
+    }, [selectedOptionId, mode, roundIndex, recordAnswer, advanceRound, setSelectedOption, setPhase, setCoreInPosition]);
 
   const shouldBeVisible =
     hasWarpedBefore &&
@@ -168,34 +174,79 @@ export function Companion() {
       }
 
       core.position.set(0, 0, 0);
+    } else if (coreState === 'entering') {
+    if (coreEnterStart.current === null) {
+        coreEnterStart.current = state.clock.elapsedTime;
+    }
+    const elapsed = state.clock.elapsedTime - coreEnterStart.current;
+    const t = Math.min(1, elapsed / 0.6);  // 600ms entry
+    const easedT = 1 - Math.pow(1 - t, 3);
+
+    // Start at panel-ish position/scale, collapse to origin
+    const startY = 0.3;
+    const startZ = 0.4;
+    core.position.set(0, startY * (1 - easedT), startZ * (1 - easedT));
+
+    // Scale collapses from large flat disc to small sphere
+    const collapsedScale = 1.5 - (1.5 - 0.28) * easedT;
+    const restoringZ = 0.15 + (1 - 0.15) * easedT;  // un-flatten
+    core.scale.set(collapsedScale, collapsedScale, collapsedScale * restoringZ);
+
+    if (coreMaterialRef.current) {
+        // Bright at start (just emerged from panel), settles to idle brightness
+        const intensity = 18 * (1 - easedT) + 4 * easedT;
+        coreMaterialRef.current.emissiveIntensity = intensity * opacity;
+    }
+
+    if (t >= 1) {
+        setCoreState('idle');
+        coreEnterStart.current = null;
+    }
     } else if (coreState === 'exiting') {
-      if (coreExitStart.current === null) {
+    if (coreExitStart.current === null) {
         coreExitStart.current = state.clock.elapsedTime;
-      }
-      const elapsed = state.clock.elapsedTime - coreExitStart.current;
-      const t = Math.min(1, elapsed / CORE_EXIT_DURATION);
-      const easedT = 1 - Math.pow(1 - t, 3);
+    }
+    const elapsed = state.clock.elapsedTime - coreExitStart.current;
+    const t = Math.min(1, elapsed / CORE_EXIT_DURATION);
+    // Ease-out cubic
+    const easedT = 1 - Math.pow(1 - t, 3);
 
-      const archBoost = Math.sin(easedT * Math.PI) * 0.3;
-      core.position.set(
-        MathUtils.lerp(0, coreTargetForPanel.x, easedT),
-        MathUtils.lerp(0, coreTargetForPanel.y, easedT) + archBoost,
-        MathUtils.lerp(0, coreTargetForPanel.z, easedT),
-      );
+    // Move core slightly toward panel position
+    // (small drift, not a big flight — the expansion is the main motion)
+    const driftY = 0.3 * easedT;
+    const driftZ = 0.4 * easedT;
+    core.position.set(0, driftY, driftZ);
 
-      core.scale.setScalar((1 - easedT) * 0.4 * opacity);
+    // Expand outward dramatically — grow from 0.28 to ~1.5
+    const expandedScale = 0.28 + (1.5 - 0.28) * easedT;
+    // But flatten on Z near the end — the gem becomes a disc
+    const flattenZ = 1 - easedT * 0.85;
+    core.scale.set(expandedScale, expandedScale, expandedScale * flattenZ);
 
-      if (coreMaterialRef.current) {
-        const peakIntensity = 18;
-        const intensity = peakIntensity * (1 - Math.pow(easedT - 0.5, 2) * 4);
+    if (coreMaterialRef.current) {
+        // Brighten dramatically through the middle, then fade as it merges with panel
+        const intensity = easedT < 0.6
+        ? 8 + easedT * 20      // ramp up: 8 → 20
+        : (1 - easedT) * 30;   // fade as panel takes over
         coreMaterialRef.current.emissiveIntensity = Math.max(0, intensity) * opacity;
-      }
 
-      if (t >= 1) {
-        setCoreState('panel');
-        setCoreInPosition(true);
-        coreExitStart.current = null;
-      }
+        // Make material more transparent toward the end so panel can show through
+        if (easedT > 0.7) {
+        const fadeT = (easedT - 0.7) / 0.3;
+        // We can't easily set opacity on meshStandardMaterial without making it transparent
+        // So we just rely on the panel being opaque and rendering on top
+        }
+    }
+
+    if (t >= 0.65 && !panelAnnounced.current) {
+    setCoreInPosition(true);
+    panelAnnounced.current = true;
+    }
+    if (t >= 1) {
+    setCoreState('panel');
+    coreExitStart.current = null;
+    panelAnnounced.current = false; // reset for next round
+    }
     } else {
       // panel state — core is invisible, panel takes over
       core.visible = false;
