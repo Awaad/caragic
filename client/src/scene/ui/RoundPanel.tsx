@@ -3,6 +3,7 @@ import { getContentForMode } from '../../modes/content';
 import { PanelFrame } from './PanelFrame';
 import { TypewriterText } from './TypewriterText';
 import type { Mode } from '../../modes/types';
+import { useResponsiveScale } from '../hooks/useResponsiveScale';
 
 const HEADER_WIDTH = 2.4;
 const HEADER_HEIGHT = 0.55;
@@ -13,11 +14,21 @@ const HEADER_Y = 0.85;
 const CHOICES_START_Y = 0.15;
 const PANEL_Z = 1.2;
 
-function getRotationForIndex(i: number): [number, number, number] {
+// function getRotationForIndex(i: number): [number, number, number] {
+//   const yRot = i % 2 === 0 ? 0.32 : -0.32;
+//   const xRot = -0.08;
+//   return [xRot, yRot, 0];
+// }
+function getRotationForIndex(i: number, total: number): [number, number, number] {
+  // For 2 options: same direction, slight offset (no opposing X-pattern)
+  // For 3+: alternate to give zigzag depth
+  if (total <= 2) {
+    return [-0.08, 0.22, 0];
+  }
   const yRot = i % 2 === 0 ? 0.32 : -0.32;
-  const xRot = -0.08;
-  return [xRot, yRot, 0];
+  return [-0.08, yRot, 0];
 }
+
 
 // Primary + complementary "electric" stop per mode, echoing the magenta/cyan/
 // violet pairings in the reference art.
@@ -47,6 +58,8 @@ export function RoundPanel() {
     setSelectedOption,
   } = useFlow();
 
+  const responsiveScale = useResponsiveScale();
+
   if (phase !== 'round' || !roundStarted || !coreInPosition) return null;
 
   const content = getContentForMode(mode);
@@ -61,7 +74,7 @@ export function RoundPanel() {
   const headerRotation: [number, number, number] = [-0.08, 0.18, 0];
 
   return (
-    <group>
+    <group scale={responsiveScale}>
       {/* Header */}
       <PanelFrame
         width={HEADER_WIDTH}
@@ -81,7 +94,7 @@ export function RoundPanel() {
         const isSelected = selectedOptionId === option.id;
         const isUnselected =
           selectedOptionId !== null && selectedOptionId !== option.id;
-        const rotation = getRotationForIndex(i);
+        const rotation = getRotationForIndex(i, round.options.length);
 
         return (
           <PanelFrame
@@ -121,6 +134,7 @@ export function RoundPanel() {
           ]}
           rotation={getRotationForIndex(
             round.options.findIndex((o) => o.id === selectedOption.id),
+            round.options.length,
           )}
         >
           <TypewriterText
