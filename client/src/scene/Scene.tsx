@@ -64,6 +64,7 @@ export function Scene() {
         />
         <OpeningObject tiltX={beta} tiltY={gamma} />
         <Companion />
+        <pointLight position={[0.5, 0.3, 1.5]} intensity={3} color="#aaccff" distance={4} />
         <RoundPanel />
         <CaptureFormPanel />
         <RevealPanel  />

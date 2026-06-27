@@ -4,8 +4,10 @@ import {
   type Group,
   type Mesh,
   type MeshStandardMaterial,
+  type MeshBasicMaterial,
+  type PointLight,
   MathUtils,
-  Vector3,
+  Vector3, AdditiveBlending, DoubleSide
 } from 'three';
 import { Icosahedron } from '@react-three/drei';
 import { useFlow } from '../../flow/useFlow';
@@ -80,10 +82,11 @@ export function Companion() {
 
   const configs = useMemo(() => createShardConfigs(), []);
   const tempVec = useMemo(() => new Vector3(), []);
-  const coreTargetForPanel = useMemo(() => new Vector3(0, 0.85, 1.2), []);
+  //const coreTargetForPanel = useMemo(() => new Vector3(0, 0.85, 1.2), []);
   const lastRoundIndex = useRef(roundIndex);
   const coreEnterStart = useRef<number | null>(null);
-
+  //const coreGlowMaterialRef = useRef<MeshBasicMaterial>(null);
+  const exitFlashLightRef = useRef<PointLight>(null);
   
   // Reset core when round/phase changes
   useEffect(() => {
@@ -122,7 +125,7 @@ export function Companion() {
         const nextRound = content.rounds[roundIndex + 1];
         if (!nextRound) setPhase('reveal');
         else if (nextRound.type === 'capture') setPhase('capturing');
-    }, SELECTION_REVEAL_DELAY * 1000 + 300);
+    }, SELECTION_REVEAL_DELAY * 1000 + 200);
 
     return () => {
         clearTimeout(collapseTimer);
@@ -156,46 +159,89 @@ export function Companion() {
 
     // --- Core state machine ---
     if (coreState === 'idle') {
-      core.visible = true;
-      const breath = 1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.15;
-      const isInteractive = phase === 'round' && !roundStarted;
-      const targetScale = (isInteractive ? 0.28 : 0.18) * breath * opacity;
-      core.scale.setScalar(MathUtils.lerp(core.scale.x, targetScale, 0.15));
+    core.visible = true;
 
-      if (coreMaterialRef.current) {
-        const targetEmissive = isInteractive
-          ? 8 + Math.sin(state.clock.elapsedTime * 3) * 3
-          : 4;
+    const isInteractive = phase === 'round' && !roundStarted;
+    const targetCoreScale = (isInteractive ? 0.28 : 0.18) * opacity;
+    core.scale.setScalar(MathUtils.lerp(core.scale.x, targetCoreScale, 0.15));
+
+    // Slow rotational drift on Y, so facets catch light at different angles
+    // Makes the 3D shape obvious even without movement of position
+    core.rotation.y += delta * 0.4;
+    core.rotation.x += delta * 0.15;
+
+    if (coreMaterialRef.current) {
+        // Throbbing emissive — sharp pulse, not smooth sine
+        // Combines two frequencies for organic flicker
+        const fastPulse = Math.sin(state.clock.elapsedTime * 4) * 0.5;
+        const slowPulse = Math.sin(state.clock.elapsedTime * 1.3) * 0.3;
+        const pulseValue = fastPulse + slowPulse;
+
+        const target = isInteractive
+        ? 3.5 + pulseValue * 1.5      // dramatic when interactive
+        : 1.5 + pulseValue * 0.4;      // subtle when waiting
+
         coreMaterialRef.current.emissiveIntensity = MathUtils.lerp(
-          coreMaterialRef.current.emissiveIntensity,
-          targetEmissive * breath * opacity,
-          0.15,
+        coreMaterialRef.current.emissiveIntensity,
+        Math.max(0.5, target) * opacity,
+        0.25,  // faster lerp catches the flicker
         );
-      }
+    }
 
-      core.position.set(0, 0, 0);
+    core.position.set(0, 0, 0);
     } else if (coreState === 'entering') {
     if (coreEnterStart.current === null) {
         coreEnterStart.current = state.clock.elapsedTime;
     }
     const elapsed = state.clock.elapsedTime - coreEnterStart.current;
-    const t = Math.min(1, elapsed / 0.6);  // 600ms entry
-    const easedT = 1 - Math.pow(1 - t, 3);
+    const t = Math.min(1, elapsed / 0.7);
 
-    // Start at panel-ish position/scale, collapse to origin
-    const startY = 0.3;
-    const startZ = 0.4;
-    core.position.set(0, startY * (1 - easedT), startZ * (1 - easedT));
+    // Three-phase mirroring the exit but reversed:
+    // Phase 1 (0.0 - 0.25): flash builds and peaks
+    // Phase 2 (0.2 - 0.4): core materializes inside flash, expanding from invisible
+    // Phase 3 (0.35 - 1.0): flash decays, core settles into idle position/scale
 
-    // Scale collapses from large flat disc to small sphere
-    const collapsedScale = 1.5 - (1.5 - 0.28) * easedT;
-    const restoringZ = 0.15 + (1 - 0.15) * easedT;  // un-flatten
-    core.scale.set(collapsedScale, collapsedScale, collapsedScale * restoringZ);
+    // Flash light: peak at start, decay through
+    if (exitFlashLightRef.current) {
+        let lightIntensity: number;
+        if (t < 0.1) {
+        lightIntensity = (t / 0.1) * (t / 0.1) * 80;
+        } else if (t < 0.4) {
+        const localT = (t - 0.1) / 0.3;
+        lightIntensity = 80 * (1 - localT * localT);
+        } else {
+        lightIntensity = 0;
+        }
+        exitFlashLightRef.current.intensity = lightIntensity * opacity;
+    }
 
-    if (coreMaterialRef.current) {
-        // Bright at start (just emerged from panel), settles to idle brightness
-        const intensity = 18 * (1 - easedT) + 4 * easedT;
+    // Core: invisible during flash buildup, emerges around t=0.25
+    if (t < 0.2) {
+        core.visible = false;
+    } else {
+        core.visible = true;
+        // Position settles from above-and-back to center
+        const settleT = Math.min(1, (t - 0.2) / 0.5);
+        const easedSettle = 1 - Math.pow(1 - settleT, 3);
+        core.position.set(
+        0,
+        0.25 * (1 - easedSettle),
+        0.4 * (1 - easedSettle),
+        );
+
+        // Scale grows from 0 to idle scale
+        const targetScale = 0.28;
+        const currentScale = targetScale * easedSettle;
+        core.scale.setScalar(currentScale * opacity);
+
+        // Spin slows as it settles
+        core.rotation.y += delta * (4 * (1 - settleT) + 0.4);
+
+        if (coreMaterialRef.current) {
+        // Bright at emergence, settles to idle
+        const intensity = 8 * (1 - easedSettle) + 3 * easedSettle;
         coreMaterialRef.current.emissiveIntensity = intensity * opacity;
+        }
     }
 
     if (t >= 1) {
@@ -208,44 +254,84 @@ export function Companion() {
     }
     const elapsed = state.clock.elapsedTime - coreExitStart.current;
     const t = Math.min(1, elapsed / CORE_EXIT_DURATION);
-    // Ease-out cubic
-    const easedT = 1 - Math.pow(1 - t, 3);
 
-    // Move core slightly toward panel position
-    // (small drift, not a big flight — the expansion is the main motion)
-    const driftY = 0.3 * easedT;
-    const driftZ = 0.4 * easedT;
-    core.position.set(0, driftY, driftZ);
+    // Three-phase timing
+    // Phase 1 (0.0 - 0.4): build-up — core expands and brightens
+    // Phase 2 (0.35 - 0.55): blinding flash — overlap with phase 1 end
+    // Phase 3 (0.5 - 1.0): flash decay, panel resolves
 
-    // Expand outward dramatically — grow from 0.28 to ~1.5
-    const expandedScale = 0.28 + (1.5 - 0.28) * easedT;
-    // But flatten on Z near the end — the gem becomes a disc
-    const flattenZ = 1 - easedT * 0.85;
-    core.scale.set(expandedScale, expandedScale, expandedScale * flattenZ);
+    // Core scale: rapidly expand, peak around t=0.4, then disappear under flash
+    let coreScale: number;
+    if (t < 0.4) {
+        // Aggressive expand: 0.28 → 0.7
+        const localT = t / 0.4;
+        coreScale = 0.28 + (0.7 - 0.28) * (localT * localT);
+    } else if (t < 0.55) {
+        // Brief continued growth into flash
+        const localT = (t - 0.4) / 0.15;
+        coreScale = 0.7 + 0.2 * localT;
+    } else {
+        // Disappear under flash
+        coreScale = 0;
+    }
+    core.scale.setScalar(coreScale * opacity);
 
+    // Slight upward drift toward panel position — but only during build-up
+    if (t < 0.5) {
+        const driftT = t / 0.5;
+        core.position.set(0, 0.25 * driftT, 0.4 * driftT);
+    }
+
+    // Hide core entirely after flash peak
+    core.visible = t < 0.55;
+
+    // Spin core faster during expansion
+    if (t < 0.55) {
+        core.rotation.y += delta * (2 + t * 8);
+    }
+
+    // Core emissive: ramps up to peak at t=0.4 then dies
     if (coreMaterialRef.current) {
-        // Brighten dramatically through the middle, then fade as it merges with panel
-        const intensity = easedT < 0.6
-        ? 8 + easedT * 20      // ramp up: 8 → 20
-        : (1 - easedT) * 30;   // fade as panel takes over
-        coreMaterialRef.current.emissiveIntensity = Math.max(0, intensity) * opacity;
-
-        // Make material more transparent toward the end so panel can show through
-        if (easedT > 0.7) {
-        const fadeT = (easedT - 0.7) / 0.3;
-        // We can't easily set opacity on meshStandardMaterial without making it transparent
-        // So we just rely on the panel being opaque and rendering on top
+        let intensity: number;
+        if (t < 0.4) {
+        intensity = 2 + (25 - 2) * Math.pow(t / 0.4, 2);
+        } else if (t < 0.55) {
+        intensity = 25;
+        } else {
+        intensity = 0;
         }
+        coreMaterialRef.current.emissiveIntensity = intensity * opacity;
     }
 
-    if (t >= 0.65 && !panelAnnounced.current) {
-    setCoreInPosition(true);
-    panelAnnounced.current = true;
+    // Flash light: bell curve peaking at t=0.45
+    if (exitFlashLightRef.current) {
+        let lightIntensity: number;
+        if (t < 0.35) {
+        lightIntensity = 0;
+        } else if (t < 0.5) {
+        // Ramp to peak
+        const localT = (t - 0.35) / 0.15;
+        lightIntensity = localT * localT * 80;
+        } else if (t < 0.75) {
+        // Decay from peak
+        const localT = (t - 0.5) / 0.25;
+        lightIntensity = 80 * (1 - localT * localT);
+        } else {
+        lightIntensity = 0;
+        }
+        exitFlashLightRef.current.intensity = lightIntensity * opacity;
     }
+
+    // Panel announces itself at t=0.5 — emerges from inside the flash
+    if (t >= 0.5 && !panelAnnounced.current) {
+        setCoreInPosition(true);
+        panelAnnounced.current = true;
+    }
+
     if (t >= 1) {
-    setCoreState('panel');
-    coreExitStart.current = null;
-    panelAnnounced.current = false; // reset for next round
+        setCoreState('panel');
+        coreExitStart.current = null;
+        panelAnnounced.current = false;
     }
     } else {
       // panel state — core is invisible, panel takes over
@@ -305,14 +391,25 @@ export function Companion() {
         }
       }}
     >
+    <pointLight
+        ref={exitFlashLightRef}
+        position={[0, 0, 1]}
+        intensity={0}
+        color="#ffffff"
+        distance={6}
+     />
       <meshStandardMaterial
         ref={coreMaterialRef}
         color="#bbcdff"
         emissive="#5577ff"
-        emissiveIntensity={4}
+        emissiveIntensity={2}
+        metalness={0.3}            // new — catches more highlights
+        roughness={0.25}           
         toneMapped={false}
       />
     </Icosahedron>
+
+    
 
     {/* Invisible larger hit zone — separate sibling element, not nested in core */}
     {phase === 'round' && !roundStarted && coreState === 'idle' && (
