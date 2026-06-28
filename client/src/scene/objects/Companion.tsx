@@ -1,5 +1,5 @@
-import { useMemo, useRef, useEffect, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo, useRef, useEffect, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import {
   type Group,
   type Mesh,
@@ -7,14 +7,16 @@ import {
   type MeshBasicMaterial,
   type PointLight,
   MathUtils,
-  Vector3, AdditiveBlending, DoubleSide
-} from 'three';
-import { Icosahedron } from '@react-three/drei';
-import { useFlow } from '../../flow/useFlow';
-import { useWarpProgress } from '../../flow/useWarpProgress';
-import { getContentForMode } from '../../modes/content';
+  Vector3,
+  AdditiveBlending,
+  DoubleSide,
+} from "three";
+import { Icosahedron } from "@react-three/drei";
+import { useFlow } from "../../flow/useFlow";
+import { useWarpProgress } from "../../flow/useWarpProgress";
+import { getContentForMode } from "../../modes/content";
 
-const SHARD_COUNT = 6;
+const SHARD_COUNT = 5;
 const ORBIT_RADIUS = 0.7;
 const SELECTION_REVEAL_DELAY = 2.5;
 const CORE_EXIT_DURATION = 0.8;
@@ -59,8 +61,10 @@ export function Companion() {
   const coreMaterialRef = useRef<MeshStandardMaterial>(null);
   const shardsRef = useRef<Array<Mesh | null>>([]);
   const shardMaterialsRef = useRef<Array<MeshStandardMaterial | null>>([]);
-  
-  const [coreState, setCoreState] = useState<'idle' | 'exiting' | 'panel' | 'entering'>('idle');
+
+  const [coreState, setCoreState] = useState<
+    "idle" | "exiting" | "panel" | "entering"
+  >("idle");
   const coreExitStart = useRef<number | null>(null);
   const panelAnnounced = useRef(false);
 
@@ -88,25 +92,25 @@ export function Companion() {
   const coreEnterStart = useRef<number | null>(null);
   //const coreGlowMaterialRef = useRef<MeshBasicMaterial>(null);
   const exitFlashLightRef = useRef<PointLight>(null);
-  
+
   // Reset core when round/phase changes
   useEffect(() => {
     if (roundIndex !== lastRoundIndex.current) {
-        lastRoundIndex.current = roundIndex;
-        setCoreState('entering');  // animate in, not snap
-        setCoreInPosition(false);
-        coreExitStart.current = null;
-        if (coreRef.current) coreRef.current.visible = true;
+      lastRoundIndex.current = roundIndex;
+      setCoreState("entering"); // animate in, not snap
+      setCoreInPosition(false);
+      coreExitStart.current = null;
+      if (coreRef.current) coreRef.current.visible = true;
     }
-    }, [roundIndex, setCoreInPosition]);
+  }, [roundIndex, setCoreInPosition]);
 
   // Reset selection on round/phase change
   useEffect(() => {
     setSelectedOption(null);
-    }, [phase, roundIndex, setSelectedOption]);
+  }, [phase, roundIndex, setSelectedOption]);
 
-    // After selection: record answer + advance after delay
-    useEffect(() => {
+  // After selection: record answer + advance after delay
+  useEffect(() => {
     if (!selectedOptionId) return;
     const content = getContentForMode(mode);
     const round = content.rounds[roundIndex];
@@ -116,46 +120,57 @@ export function Companion() {
 
     // After reveal pause: hide panel, then warp
     const collapseTimer = setTimeout(() => {
-        setCoreInPosition(false); // panel collapses
+      setCoreInPosition(false); // panel collapses
     }, SELECTION_REVEAL_DELAY * 1000);
 
     // Slightly later: trigger warp + advance round
-    const warpTimer = setTimeout(() => {
+    const warpTimer = setTimeout(
+      () => {
         setSelectedOption(null);
         advanceRound();
         const nextRound = content.rounds[roundIndex + 1];
         if (!nextRound) {
-        setPhase('reveal');
-        } else if (nextRound.type === 'capture') {
-        // Warp into capture phase
-        setPhase('warping');
-        setPendingArrivalPhase('capturing');
+          setPhase("reveal");
+        } else if (nextRound.type === "capture") {
+          // Warp into capture phase
+          setPhase("warping");
+          setPendingArrivalPhase("capturing");
         } else {
-        // Warp back into round phase for next choice round
-        setPhase('warping');
-        setPendingArrivalPhase('round');
+          // Warp back into round phase for next choice round
+          setPhase("warping");
+          setPendingArrivalPhase("round");
         }
-    }, SELECTION_REVEAL_DELAY * 1000 + 400);
+      },
+      SELECTION_REVEAL_DELAY * 1000 + 500,
+    );
 
     return () => {
-        clearTimeout(collapseTimer);
-        clearTimeout(warpTimer);
+      clearTimeout(collapseTimer);
+      clearTimeout(warpTimer);
     };
-    }, [selectedOptionId, mode, roundIndex, recordAnswer, advanceRound, setSelectedOption, setPhase, setCoreInPosition]);
+  }, [
+    selectedOptionId,
+    mode,
+    roundIndex,
+    recordAnswer,
+    advanceRound,
+    setSelectedOption,
+    setPhase,
+    setCoreInPosition,
+  ]);
 
   useEffect(() => {
     if (exitFlashLightRef.current) {
-        exitFlashLightRef.current.intensity = 0;
+      exitFlashLightRef.current.intensity = 0;
     }
   }, [phase, roundIndex]);
 
   const shouldBeVisible =
     hasWarpedBefore &&
-    (phase === 'round' ||
-      phase === 'capturing' ||
-      phase === 'reveal' ||
-      (phase === 'warping' && warp.isFirstWarp)
-    );
+    (phase === "round" ||
+      phase === "capturing" ||
+      phase === "reveal" ||
+      (phase === "warping" && warp.isFirstWarp));
 
   useFrame((state, delta) => {
     const group = groupRef.current;
@@ -175,19 +190,19 @@ export function Companion() {
     group.rotation.y += delta * 0.08;
 
     // --- Core state machine ---
-    if (coreState === 'idle') {
-    core.visible = true;
+    if (coreState === "idle") {
+      core.visible = true;
 
-    const isInteractive = phase === 'round' && !roundStarted;
-    const targetCoreScale = (isInteractive ? 0.28 : 0.18) * opacity;
-    core.scale.setScalar(MathUtils.lerp(core.scale.x, targetCoreScale, 0.15));
+      const isInteractive = phase === "round" && !roundStarted;
+      const targetCoreScale = (isInteractive ? 0.28 : 0.18) * opacity;
+      core.scale.setScalar(MathUtils.lerp(core.scale.x, targetCoreScale, 0.15));
 
-    // Slow rotational drift on Y, so facets catch light at different angles
-    // Makes the 3D shape obvious even without movement of position
-    core.rotation.y += delta * 0.4;
-    core.rotation.x += delta * 0.15;
+      // Slow rotational drift on Y, so facets catch light at different angles
+      // Makes the 3D shape obvious even without movement of position
+      core.rotation.y += delta * 0.4;
+      core.rotation.x += delta * 0.15;
 
-    if (coreMaterialRef.current) {
+      if (coreMaterialRef.current) {
         // Throbbing emissive — sharp pulse, not smooth sine
         // Combines two frequencies for organic flicker
         const fastPulse = Math.sin(state.clock.elapsedTime * 4) * 0.5;
@@ -195,68 +210,64 @@ export function Companion() {
         const pulseValue = fastPulse + slowPulse;
 
         const target = isInteractive
-        ? 3.5 + pulseValue * 1.5      // dramatic when interactive
-        : 1.5 + pulseValue * 0.4;      // subtle when waiting
+          ? 3.5 + pulseValue * 1.5 // dramatic when interactive
+          : 1.5 + pulseValue * 0.4; // subtle when waiting
 
         coreMaterialRef.current.emissiveIntensity = MathUtils.lerp(
-        coreMaterialRef.current.emissiveIntensity,
-        Math.max(0.5, target) * opacity,
-        0.25,  // faster lerp catches the flicker
+          coreMaterialRef.current.emissiveIntensity,
+          Math.max(0.5, target) * opacity,
+          0.25, // faster lerp catches the flicker
         );
-    }
+      }
 
-    core.position.set(0, 0, 0);
-    } else if (coreState === 'entering') {
-    if (coreEnterStart.current === null) {
+      core.position.set(0, 0, 0);
+    } else if (coreState === "entering") {
+      if (coreEnterStart.current === null) {
         coreEnterStart.current = state.clock.elapsedTime;
-    }
-    const elapsed = state.clock.elapsedTime - coreEnterStart.current;
-    const t = Math.min(1, elapsed / 0.7);
+      }
+      const elapsed = state.clock.elapsedTime - coreEnterStart.current;
+      const t = Math.min(1, elapsed / 0.7);
 
-    // Flash light — peaks at start, decays through
-    if (exitFlashLightRef.current) {
-    let lightIntensity = 0;
-    if (t >= 0.35 && t <= 0.75) {
-        if (t < 0.5) {
-        const localT = (t - 0.35) / 0.15;
-        lightIntensity = localT * localT * 80;
-        } else {
-        const localT = (t - 0.5) / 0.25;
-        lightIntensity = 80 * Math.max(0, 1 - localT * localT);
+      // Flash light — peaks at start, decays through
+      if (exitFlashLightRef.current) {
+        let lightIntensity = 0;
+        if (t >= 0.35 && t <= 0.75) {
+          if (t < 0.5) {
+            const localT = (t - 0.35) / 0.15;
+            lightIntensity = localT * localT * 80;
+          } else {
+            const localT = (t - 0.5) / 0.25;
+            lightIntensity = 80 * Math.max(0, 1 - localT * localT);
+          }
         }
-    }
-    // outside [0.35, 0.75]: lightIntensity stays 0
-    exitFlashLightRef.current.intensity = lightIntensity * opacity;
-    }
+        // outside [0.35, 0.75]: lightIntensity stays 0
+        exitFlashLightRef.current.intensity = lightIntensity * opacity;
+      }
 
-    if (t < 0.2) {
+      if (t < 0.2) {
         // Hidden during flash buildup
         core.visible = false;
-    } else {
+      } else {
         core.visible = true;
 
         // Position settles from above-and-back to center
         const settleT = Math.min(1, (t - 0.2) / 0.5);
         const easedSettle = 1 - Math.pow(1 - settleT, 3);
-        core.position.set(
-        0,
-        0.25 * (1 - easedSettle),
-        0.4 * (1 - easedSettle),
-        );
+        core.position.set(0, 0.25 * (1 - easedSettle), 0.4 * (1 - easedSettle));
 
         // Scale with overshoot — pop into existence
         const targetScale = 0.28;
         const localT = settleT;
         let scaleMultiplier: number;
         if (localT < 0.65) {
-        // Overshoot
-        const sub = localT / 0.65;
-        const eased = 1 - Math.pow(1 - sub, 2);
-        scaleMultiplier = 1.25 * eased;  // overshoot to 125%
+          // Overshoot
+          const sub = localT / 0.65;
+          const eased = 1 - Math.pow(1 - sub, 2);
+          scaleMultiplier = 1.25 * eased; // overshoot to 125%
         } else {
-        // Settle from overshoot back to 100%
-        const sub = (localT - 0.65) / 0.35;
-        scaleMultiplier = 1.25 - 0.25 * sub;
+          // Settle from overshoot back to 100%
+          const sub = (localT - 0.65) / 0.35;
+          scaleMultiplier = 1.25 - 0.25 * sub;
         }
         core.scale.setScalar(targetScale * scaleMultiplier * opacity);
 
@@ -266,98 +277,93 @@ export function Companion() {
         core.rotation.x += delta * spinSpeed * 0.3;
 
         if (coreMaterialRef.current) {
-        // Bright at emergence (12), settles to idle (3)
-        const intensity = 12 * (1 - easedSettle) + 3 * easedSettle;
-        coreMaterialRef.current.emissiveIntensity = intensity * opacity;
+          // Bright at emergence (12), settles to idle (3)
+          const intensity = 12 * (1 - easedSettle) + 3 * easedSettle;
+          coreMaterialRef.current.emissiveIntensity = intensity * opacity;
         }
-    }
+      }
 
-    if (t >= 1) {
-        setCoreState('idle');
+      if (t >= 1) {
+        setCoreState("idle");
         coreEnterStart.current = null;
-    }
-    } else if (coreState === 'exiting') {
-    if (coreExitStart.current === null) {
+      }
+    } else if (coreState === "exiting") {
+      if (coreExitStart.current === null) {
         coreExitStart.current = state.clock.elapsedTime;
-    }
-    const elapsed = state.clock.elapsedTime - coreExitStart.current;
-    const t = Math.min(1, elapsed / CORE_EXIT_DURATION);
+      }
+      const elapsed = state.clock.elapsedTime - coreExitStart.current;
+      const t = Math.min(1, elapsed / CORE_EXIT_DURATION);
 
-    // Three-phase timing
-    // Phase 1 (0.0 - 0.4): build-up — core expands and brightens
-    // Phase 2 (0.35 - 0.55): blinding flash — overlap with phase 1 end
-    // Phase 3 (0.5 - 1.0): flash decay, panel resolves
-
-    // Core scale: rapidly expand, peak around t=0.4, then disappear under flash
-    let coreScale: number;
-    if (t < 0.4) {
+      // Core scale: rapidly expand, peak around t=0.4, then disappear under flash
+      let coreScale: number;
+      if (t < 0.4) {
         // Aggressive expand: 0.28 → 0.7
         const localT = t / 0.4;
         coreScale = 0.28 + (0.7 - 0.28) * (localT * localT);
-    } else if (t < 0.55) {
+      } else if (t < 0.55) {
         // Brief continued growth into flash
         const localT = (t - 0.4) / 0.15;
         coreScale = 0.7 + 0.2 * localT;
-    } else {
+      } else {
         // Disappear under flash
         coreScale = 0;
-    }
-    core.scale.setScalar(coreScale * opacity);
+      }
+      core.scale.setScalar(coreScale * opacity);
 
-    // Slight upward drift toward panel position — but only during build-up
-    if (t < 0.5) {
+      // Slight upward drift toward panel position — but only during build-up
+      if (t < 0.5) {
         const driftT = t / 0.5;
         core.position.set(0, 0.25 * driftT, 0.4 * driftT);
-    }
+      }
 
-    // Hide core entirely after flash peak
-    core.visible = t < 0.55;
+      // Hide core entirely after flash peak
+      core.visible = t < 0.55;
 
-    // Spin core faster during expansion
-    if (t < 0.55) {
+      // Spin core faster during expansion
+      if (t < 0.55) {
         core.rotation.y += delta * (2 + t * 8);
-    }
+      }
 
-    // Core emissive: ramps up to peak at t=0.4 then dies
-    if (coreMaterialRef.current) {
+      // Core emissive: ramps up to peak at t=0.4 then dies
+      if (coreMaterialRef.current) {
         let intensity: number;
         if (t < 0.4) {
-        intensity = 2 + (25 - 2) * Math.pow(t / 0.4, 2);
+          intensity = 2 + (25 - 2) * Math.pow(t / 0.4, 2);
         } else if (t < 0.55) {
-        intensity = 25;
+          intensity = 25;
         } else {
-        intensity = 0;
+          intensity = 0;
         }
         coreMaterialRef.current.emissiveIntensity = intensity * opacity;
-    }
+      }
 
-    // Flash light: bell curve peaking at t=0.45
-    if (exitFlashLightRef.current) {
-    let lightIntensity = 0;
-    if (t >= 0.35 && t <= 0.75) {
-        if (t < 0.5) {
-        const localT = (t - 0.35) / 0.15;
-        lightIntensity = localT * localT * 80;
-        } else {
-        const localT = (t - 0.5) / 0.25;
-        lightIntensity = 80 * Math.max(0, 1 - localT * localT);
+      // Flash light: bell curve peaking at t=0.45
+      if (exitFlashLightRef.current) {
+        let lightIntensity = 0;
+        if (t >= 0.35 && t <= 0.75) {
+          if (t < 0.5) {
+            const localT = (t - 0.35) / 0.15;
+            lightIntensity = localT * localT * 80;
+          } else {
+            const localT = (t - 0.5) / 0.25;
+            lightIntensity = 80 * Math.max(0, 1 - localT * localT);
+          }
         }
-    }
-    // outside [0.35, 0.75]: lightIntensity stays 0
-    exitFlashLightRef.current.intensity = lightIntensity * opacity;
-    }
+        // outside [0.35, 0.75]: lightIntensity stays 0
+        exitFlashLightRef.current.intensity = lightIntensity * opacity;
+      }
 
-    // Panel announces itself at t=0.5 — emerges from inside the flash
-    if (t >= 0.5 && !panelAnnounced.current) {
+      // Panel announces itself at t=0.5 — emerges from inside the flash
+      if (t >= 0.5 && !panelAnnounced.current) {
         setCoreInPosition(true);
         panelAnnounced.current = true;
-    }
+      }
 
-    if (t >= 1) {
-        setCoreState('panel');
+      if (t >= 1) {
+        setCoreState("panel");
         coreExitStart.current = null;
         panelAnnounced.current = false;
-    }
+      }
     } else {
       // panel state — core is invisible, panel takes over
       core.visible = false;
@@ -371,12 +377,22 @@ export function Companion() {
       const material = shardMaterialsRef.current[i];
       if (!shard) continue;
 
+      // Cumulative consumption: each round consumes one shard permanently
+      const consumedByPastRounds = i < roundIndex;
+      const consumedByCurrentRound =
+        i === roundIndex &&
+        ((phase === "round" && roundStarted) ||
+          phase === "capturing" ||
+          phase === "reveal");
+      const hidden = consumedByPastRounds || consumedByCurrentRound;
+      shard.visible = !hidden;
+      if (hidden) continue;
       // Hide shards during warp transitions
-        if (phase === 'warping') {
-            shard.visible = false;
-            continue;
-        }
-        shard.visible = true;
+      if (phase === "warping") {
+        shard.visible = false;
+        continue;
+      }
+      shard.visible = true;
 
       const cfg = configs[i];
       const angle = cfg.baseAngle + time * cfg.orbitSpeed;
@@ -408,79 +424,81 @@ export function Companion() {
   });
 
   return (
-  <group ref={groupRef} visible={false}>
-    {/* Core — visual element with its own click handler */}
-    <Icosahedron
-      ref={coreRef}
-      args={[1, 0]}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (coreState !== 'idle' || roundStarted) return;
-        console.log('CORE CLICKED', { phase, roundStarted, coreState });
-        if (phase === 'round' && !roundStarted && coreState === 'idle') {
-          startRound();
-          setCoreState('exiting');
-        }
-      }}
-    >
-    <pointLight
-        ref={exitFlashLightRef}
-        position={[0, 0, 1]}
-        intensity={0}
-        color="#ffffff"
-        distance={6}
-     />
-      <meshStandardMaterial
-        ref={coreMaterialRef}
-        color="#bbcdff"
-        emissive="#5577ff"
-        emissiveIntensity={2}
-        metalness={0.3}            // new — catches more highlights
-        roughness={0.25}           
-        toneMapped={false}
-      />
-    </Icosahedron>
-
-    
-
-    {/* Invisible larger hit zone — separate sibling element, not nested in core */}
-    {phase === 'round' && !roundStarted && coreState === 'idle' && (
-      <mesh
-        position={[0, 0, 0]}
+    <group ref={groupRef} visible={false}>
+      {/* Core — visual element with its own click handler */}
+      <Icosahedron
+        ref={coreRef}
+        args={[1, 0]}
         onClick={(e) => {
           e.stopPropagation();
-          if (coreState !== 'idle' || roundStarted) return;
-          console.log('HIT SPHERE CLICKED', { phase, roundStarted, coreState });
-          startRound();
-          setCoreState('exiting');
+          if (coreState !== "idle" || roundStarted) return;
+          console.log("CORE CLICKED", { phase, roundStarted, coreState });
+          if (phase === "round" && !roundStarted && coreState === "idle") {
+            startRound();
+            setCoreState("exiting");
+          }
         }}
       >
-        <sphereGeometry args={[0.6, 16, 16]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-      </mesh>
-    )}
-
-    {/* Shards — pure decoration, no raycast */}
-    {configs.map((_, i) => (
-      <Icosahedron
-        key={i}
-        ref={(el) => {
-          shardsRef.current[i] = el;
-        }}
-        args={[1, 0]}
-        raycast={() => null}
-      >
+        <pointLight
+          ref={exitFlashLightRef}
+          position={[0, 0, 1]}
+          intensity={0}
+          color="#ffffff"
+          distance={6}
+        />
         <meshStandardMaterial
-          ref={(el) => {
-            shardMaterialsRef.current[i] = el;
-          }}
-          color="#9bb4ff"
-          emissive="#3355aa"
+          ref={coreMaterialRef}
+          color="#bbcdff"
+          emissive="#5577ff"
           emissiveIntensity={2}
+          metalness={0.3} // new — catches more highlights
+          roughness={0.25}
           toneMapped={false}
         />
       </Icosahedron>
-    ))}
-  </group>
-);
+
+      {/* Invisible larger hit zone — separate sibling element, not nested in core */}
+      {phase === "round" && !roundStarted && coreState === "idle" && (
+        <mesh
+          position={[0, 0, 0]}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (coreState !== "idle" || roundStarted) return;
+            console.log("HIT SPHERE CLICKED", {
+              phase,
+              roundStarted,
+              coreState,
+            });
+            startRound();
+            setCoreState("exiting");
+          }}
+        >
+          <sphereGeometry args={[0.6, 16, 16]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
+
+      {/* Shards — pure decoration, no raycast */}
+      {configs.map((_, i) => (
+        <Icosahedron
+          key={i}
+          ref={(el) => {
+            shardsRef.current[i] = el;
+          }}
+          args={[1, 0]}
+          raycast={() => null}
+        >
+          <meshStandardMaterial
+            ref={(el) => {
+              shardMaterialsRef.current[i] = el;
+            }}
+            color="#9bb4ff"
+            emissive="#3355aa"
+            emissiveIntensity={2}
+            toneMapped={false}
+          />
+        </Icosahedron>
+      ))}
+    </group>
+  );
 }
