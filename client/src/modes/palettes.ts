@@ -18,15 +18,19 @@ export const palettes: Record<Mode, NebulaPalette> = {
   dating: {
     deepSpace: [0.08, 0.02, 0.1],
     glow: [0.6, 0.3, 0.55],
-    intensity: 0.4,
+    intensity: 1.4,
     // Arrival: warmer, deeper magenta — like dusk
     arrivalDeepSpace: [0.12, 0.04, 0.08],
     arrivalGlow: [0.75, 0.35, 0.45],
     roundVariants: [
-    { deepSpace: [0.05, 0.02, 0.15], glow: [1, 0.3, 0.85], seed: 47.3 },
-    { deepSpace: [0.12, 0.02, 0.08], glow: [0.95, 0.4, 0.6], seed: 73.1 },
-    { deepSpace: [0.18, 0.04, 0.12], glow: [1, 0.5, 0.4], seed: 91.8 },
-    { deepSpace: [0.04, 0.02, 0.2], glow: [0.85, 0.3, 0.95], seed: 23.5 },
+      // Round 0 — deep magenta cosmos
+      { deepSpace: [0.05, 0.0, 0.15], glow: [2.5, 0.5, 2.1], seed: 47.3 },
+      // Round 1 — warmer rose/coral
+      { deepSpace: [0.18, 0.04, 0.08], glow: [2.8, 1.2, 0.9], seed: 73.1 },
+      // Round 2 — deep violet
+      { deepSpace: [0.08, 0.0, 0.22], glow: [1.5, 0.4, 2.6], seed: 91.8 },
+      // Round 3 — electric pink/cyan
+      { deepSpace: [0.02, 0.05, 0.18], glow: [2.4, 0.8, 2.2], seed: 23.5 },
   ],
   },
   friendship: {

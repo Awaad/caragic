@@ -1,14 +1,14 @@
-import { useMemo, useRef, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Color, MathUtils, type Mesh } from 'three';
-import vertexShader from './nebula.vert.glsl';
-import fragmentShader from './nebula.frag.glsl';
-import { useFlow } from '../../../flow/useFlow';
-import { useWarpProgress } from '../../../flow/useWarpProgress';
-import { getPaletteForMode } from '../../../modes/palettes';
+import { useMemo, useRef, useEffect } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Color, MathUtils, type Mesh } from "three";
+import vertexShader from "./nebula.vert.glsl";
+import fragmentShader from "./nebula.frag.glsl";
+import { useFlow } from "../../../flow/useFlow";
+import { useWarpProgress } from "../../../flow/useWarpProgress";
+import { getPaletteForMode } from "../../../modes/palettes";
 
 const REST_Z = -8;
-const WARP_Z_FORWARD = -2;
+const WARP_Z_FORWARD = -5;
 
 export function NebulaBackdrop() {
   const meshRef = useRef<Mesh>(null);
@@ -43,7 +43,7 @@ export function NebulaBackdrop() {
 
   // Snapshot variant transition when warp starts
   useEffect(() => {
-    if (phase === 'warping') {
+    if (phase === "warping") {
       prevVariantIndex.current = newVariantIndex.current;
       newVariantIndex.current = roundIndex;
     }
@@ -55,8 +55,10 @@ export function NebulaBackdrop() {
 
     const palette = getPaletteForMode(mode);
     const variants = palette.roundVariants;
-    const prev = variants[Math.min(prevVariantIndex.current, variants.length - 1)];
-    const next = variants[Math.min(newVariantIndex.current, variants.length - 1)];
+    const prev =
+      variants[Math.min(prevVariantIndex.current, variants.length - 1)];
+    const next =
+      variants[Math.min(newVariantIndex.current, variants.length - 1)];
 
     // Lerp factor: 0 → 1 across warp, hold at 1 otherwise
     const lerpT = warp.active ? warp.t : 1;
@@ -71,8 +73,9 @@ export function NebulaBackdrop() {
     targetGlow.copy(prevGlow).lerp(nextGlow, lerpT);
 
     // Smooth-approach the uniforms (don't snap)
-    uniforms.uDeepSpace.value.lerp(targetDeep, 0.1);
-    uniforms.uGlow.value.lerp(targetGlow, 0.1);
+    const lerpRate = warp.active ? 0.25 : 0.1;
+    uniforms.uDeepSpace.value.lerp(targetDeep, lerpRate);
+    uniforms.uGlow.value.lerp(targetGlow, lerpRate);
 
     const targetSeed = MathUtils.lerp(prev.seed, next.seed, lerpT);
     uniforms.uSceneSeed.value = MathUtils.lerp(
