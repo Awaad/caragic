@@ -13,3 +13,42 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # enables file watching on Windows
     
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: card-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - card-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # expose to host for psql/GUI access during dev
+    networks:
+      - card-internal
+
+  api:
+    build: ./api
+    container_name: card-api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      SECRET_KEY: ${SECRET_KEY}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+    ports:
+      - "8000:8000"  # expose API to host
+    networks:
+      - card-internal
+
+volumes:
+  card-db-data:
+
+networks:
+  card-internal:
