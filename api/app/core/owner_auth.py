@@ -11,7 +11,7 @@ def get_current_owner(admin_session: str | None = Cookie(default=None)) -> dict:
     """FastAPI dependency. Validates the admin JWT cookie and returns the payload.
 
     Note: the parameter name `admin_session` matches the default cookie name.
-    If you change `admin_cookie_name` in settings, also use `Cookie(alias=...)` here.
+    If we change `admin_cookie_name` in settings, also use `Cookie(alias=...)` here.
     """
     settings = get_settings()
     if admin_session is None:
