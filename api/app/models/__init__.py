@@ -1,3 +1,3 @@
-from . import visitor
+from .visitor import Visitor, VisitorSessionToken
 
-__all__ = ["visitor"]
+__all__ = ["Visitor", "VisitorSessionToken"]
