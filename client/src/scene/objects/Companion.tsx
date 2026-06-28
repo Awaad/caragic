@@ -114,35 +114,43 @@ export function Companion() {
     if (!selectedOptionId) return;
     const content = getContentForMode(mode);
     const round = content.rounds[roundIndex];
-    if (!round) return;
+    if (!round || round.type !== "choice") return;
+
+    const selectedOption = round.options.find((o) => o.id === selectedOptionId);
+    if (!selectedOption) return;
 
     recordAnswer(round.id, selectedOptionId);
 
-    // After reveal pause: hide panel, then warp
-    const collapseTimer = setTimeout(() => {
-      setCoreInPosition(false); // panel collapses
-    }, SELECTION_REVEAL_DELAY * 1000);
+    // Typewriter timing: startDelay (400ms) + chars × charDelay (35ms each)
+    // Then a fixed dwell time so the user can finish reading
+    const TYPEWRITER_START_DELAY = 400;
+    const CHAR_DELAY = 35;
+    const READ_DWELL_MS = 3500;
 
-    // Slightly later: trigger warp + advance round
-    const warpTimer = setTimeout(
-      () => {
-        setSelectedOption(null);
-        advanceRound();
-        const nextRound = content.rounds[roundIndex + 1];
-        if (!nextRound) {
-          setPhase("reveal");
-        } else if (nextRound.type === "capture") {
-          // Warp into capture phase
-          setPhase("warping");
-          setPendingArrivalPhase("capturing");
-        } else {
-          // Warp back into round phase for next choice round
-          setPhase("warping");
-          setPendingArrivalPhase("round");
-        }
-      },
-      SELECTION_REVEAL_DELAY * 1000 + 500,
-    );
+    const typewriterDuration =
+      TYPEWRITER_START_DELAY + selectedOption.revealText.length * CHAR_DELAY;
+    const totalDelay = typewriterDuration + READ_DWELL_MS;
+
+    // Panel collapse fires when reading dwell completes
+    const collapseTimer = setTimeout(() => {
+      setCoreInPosition(false);
+    }, totalDelay);
+
+    // Warp fires 500ms after collapse begins
+    const warpTimer = setTimeout(() => {
+      setSelectedOption(null);
+      advanceRound();
+      const nextRound = content.rounds[roundIndex + 1];
+      if (!nextRound) {
+        setPhase("reveal");
+      } else if (nextRound.type === "capture") {
+        setPhase("warping");
+        setPendingArrivalPhase("capturing");
+      } else {
+        setPhase("warping");
+        setPendingArrivalPhase("round");
+      }
+    }, totalDelay + 500);
 
     return () => {
       clearTimeout(collapseTimer);
@@ -157,6 +165,7 @@ export function Companion() {
     setSelectedOption,
     setPhase,
     setCoreInPosition,
+    setPendingArrivalPhase,
   ]);
 
   useEffect(() => {
