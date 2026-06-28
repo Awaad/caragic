@@ -1,10 +1,11 @@
-import { useFlow } from '../../flow/useFlow';
-import { getContentForMode } from '../../modes/content';
-import { PanelFrame } from './PanelFrame';
-import { TypewriterText } from './TypewriterText';
-import type { Mode } from '../../modes/types';
-import { useResponsiveScale } from '../hooks/useResponsiveScale';
+import { useFlow } from "../../flow/useFlow";
+import { getContentForMode } from "../../modes/content";
+import { PanelFrame } from "./PanelFrame";
+import { TypewriterText } from "./TypewriterText";
+import type { Mode } from "../../modes/types";
+import { useResponsiveScale } from "../hooks/useResponsiveScale";
 
+console.log("RoundPanel module loaded");
 const HEADER_WIDTH = 2.4;
 const HEADER_HEIGHT = 0.55;
 const CHOICE_WIDTH = 2.0;
@@ -19,7 +20,10 @@ const PANEL_Z = 1.2;
 //   const xRot = -0.08;
 //   return [xRot, yRot, 0];
 // }
-function getRotationForIndex(i: number, total: number): [number, number, number] {
+function getRotationForIndex(
+  i: number,
+  total: number,
+): [number, number, number] {
   // For 2 options: same direction, slight offset (no opposing X-pattern)
   // For 3+: alternate to give zigzag depth
   if (total <= 2) {
@@ -29,25 +33,25 @@ function getRotationForIndex(i: number, total: number): [number, number, number]
   return [-0.08, yRot, 0];
 }
 
-
 // Primary + complementary "electric" stop per mode, echoing the magenta/cyan/
 // violet pairings in the reference art.
 function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
-    case 'dating':
-      return { primary: '#ff3ad8', secondary: '#00e5ff' };
-    case 'friendship':
-      return { primary: '#3aeae0', secondary: '#b14aff' };
-    case 'professional':
-      return { primary: '#3a8aff', secondary: '#2ee6ff' };
-    case 'mix':
-      return { primary: '#c060d8', secondary: '#3affd0' };
+    case "dating":
+      return { primary: "#ff3ad8", secondary: "#00e5ff" };
+    case "friendship":
+      return { primary: "#3aeae0", secondary: "#b14aff" };
+    case "professional":
+      return { primary: "#3a8aff", secondary: "#2ee6ff" };
+    case "mix":
+      return { primary: "#c060d8", secondary: "#3affd0" };
     default:
-      return { primary: '#88aaff', secondary: '#46f0ff' };
+      return { primary: "#88aaff", secondary: "#46f0ff" };
   }
 }
 
 export function RoundPanel() {
+  console.log("RoundPanel called");
   const {
     phase,
     mode,
@@ -57,14 +61,15 @@ export function RoundPanel() {
     coreInPosition,
     setSelectedOption,
   } = useFlow();
-
+  console.log("RoundPanel render:", { phase, roundStarted, coreInPosition });
   const responsiveScale = useResponsiveScale();
 
-  if (phase !== 'round' || !roundStarted || !coreInPosition) return null;
+  if (phase !== "round" && phase !== "warping") return null;
+  if (!roundStarted) return null;
 
   const content = getContentForMode(mode);
   const round = content.rounds[roundIndex];
-  if (!round || round.type !== 'choice') return null;
+  if (!round || round.type !== "choice") return null;
 
   const { primary: accent, secondary } = getAccentColors(mode);
   const selectedOption = selectedOptionId
@@ -75,7 +80,7 @@ export function RoundPanel() {
 
   return (
     <group scale={responsiveScale}>
-      {/* Header */}
+      {/* Header - visible while coreInPosition; collapses when it flips false */}
       <PanelFrame
         width={HEADER_WIDTH}
         height={HEADER_HEIGHT}
@@ -83,7 +88,7 @@ export function RoundPanel() {
         textSize={0.085}
         position={[0, HEADER_Y, PANEL_Z]}
         rotation={headerRotation}
-        visible
+        visible={coreInPosition}
         accentColor={accent}
         accentColorSecondary={secondary}
         variant="header"
@@ -105,7 +110,7 @@ export function RoundPanel() {
             textSize={0.075}
             position={[0, CHOICES_START_Y - i * CHOICE_SPACING, PANEL_Z]}
             rotation={rotation}
-            visible={!isUnselected}
+            visible={coreInPosition && !isUnselected}
             accentColor={accent}
             accentColorSecondary={secondary}
             variant="choice"
@@ -121,7 +126,7 @@ export function RoundPanel() {
       })}
 
       {/* Reveal text */}
-      {selectedOption && (
+      {selectedOption && coreInPosition && (
         <group
           position={[
             0,

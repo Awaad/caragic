@@ -1,6 +1,6 @@
-import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Text } from "@react-three/drei";
 import {
   AdditiveBlending,
   Color,
@@ -11,9 +11,9 @@ import {
   ShapeGeometry,
   type Group,
   type Mesh,
-   MeshBasicMaterial,
-   ShaderMaterial,
-} from 'three';
+  MeshBasicMaterial,
+  ShaderMaterial,
+} from "three";
 
 interface PanelFrameProps {
   width: number;
@@ -28,7 +28,7 @@ interface PanelFrameProps {
   accentColorSecondary?: string;
   selected?: boolean;
   dimmed?: boolean;
-  variant?: 'header' | 'choice';
+  variant?: "header" | "choice";
   onClick?: () => void;
 }
 
@@ -37,7 +37,7 @@ const CORNER_RADIUS = 0.06;
 const FRAME_THICKNESS = 0.018;
 const BRACKET_THICK = 0.014;
 
-// geometry 
+// geometry
 function roundedRectShape(w: number, h: number, r: number): Shape {
   const s = new Shape();
   const x = -w / 2;
@@ -72,10 +72,17 @@ function roundedRectPath(w: number, h: number, r: number): Path {
   return p;
 }
 
-// Rounded-rect ring (outline only) used for the glowing border. 
-function frameGeometry(w: number, h: number, r: number, t: number): ShapeGeometry {
+// Rounded-rect ring (outline only) used for the glowing border.
+function frameGeometry(
+  w: number,
+  h: number,
+  r: number,
+  t: number,
+): ShapeGeometry {
   const outer = roundedRectShape(w, h, r);
-  outer.holes.push(roundedRectPath(w - t * 2, h - t * 2, Math.max(0.001, r - t)));
+  outer.holes.push(
+    roundedRectPath(w - t * 2, h - t * 2, Math.max(0.001, r - t)),
+  );
   return new ShapeGeometry(outer, 18);
 }
 
@@ -142,7 +149,7 @@ const HALO_FRAG = /* glsl */ `
   }
 `;
 
-// component 
+// component
 export function PanelFrame({
   width,
   height,
@@ -155,7 +162,7 @@ export function PanelFrame({
   accentColorSecondary,
   selected = false,
   dimmed = false,
-  variant = 'choice',
+  variant = "choice",
   onClick,
 }: PanelFrameProps) {
   const groupRef = useRef<Group>(null); // visibility scale-in
@@ -242,7 +249,7 @@ export function PanelFrame({
   const glowMat = useRef<MeshBasicMaterial>(null);
   const bracketMat = useMemo(
     () =>
-      new (class extends MeshBasicMaterial {})({
+      new MeshBasicMaterial({
         color: accentBright.clone(),
         toneMapped: false,
         transparent: true,
@@ -269,57 +276,96 @@ export function PanelFrame({
     const group = groupRef.current;
     if (!group) return;
 
-    // Track when visibility flipped
+    // 1. Track visibility transitions
     if (visible && !wasVisible.current) {
-        visibilityChangedAt.current = t;
-        wasVisible.current = true;
+      visibilityChangedAt.current = t;
+      wasVisible.current = true;
+      console.log("FRAME visible:true, variant:", variant, "at", t);
     } else if (!visible && wasVisible.current) {
-        visibilityChangedAt.current = t;
-        wasVisible.current = false;
+      visibilityChangedAt.current = t;
+      wasVisible.current = false;
+      console.log(
+        "FRAME visible:false (collapse start), variant:",
+        variant,
+        "at",
+        t,
+      );
     }
 
-    // Emergence/collapse animation
+    // 2. Compute scale based on visibility curve (emergence or collapse)
     let scaleTarget: number;
     if (visible) {
-        const elapsed = visibilityChangedAt.current
+      const elapsed = visibilityChangedAt.current
         ? t - visibilityChangedAt.current
         : Infinity;
-        if (elapsed < 0.45) {
-        // Emergence curve: rapid grow with overshoot
+      if (elapsed < 0.45) {
         const progress = elapsed / 0.45;
-        // Custom curve: starts at 0, overshoots 1.08 at ~0.7, settles to 1
         const overshoot = 1.08;
         if (progress < 0.7) {
-            // Accelerate to overshoot
-            const localT = progress / 0.7;
-            const eased = 1 - Math.pow(1 - localT, 2);
-            scaleTarget = overshoot * eased;
+          const localT = progress / 0.7;
+          const eased = 1 - Math.pow(1 - localT, 2);
+          scaleTarget = overshoot * eased;
         } else {
-            // Settle from overshoot to 1
-            const localT = (progress - 0.7) / 0.3;
-            scaleTarget = overshoot - (overshoot - 1) * localT;
+          const localT = (progress - 0.7) / 0.3;
+          scaleTarget = overshoot - (overshoot - 1) * localT;
         }
-        } else {
+      } else {
         scaleTarget = 1;
-        }
+      }
     } else {
-        // Collapse: faster contract, slight inward acceleration
-        const elapsed = visibilityChangedAt.current
+      const elapsed = visibilityChangedAt.current
         ? t - visibilityChangedAt.current
         : Infinity;
-        if (elapsed < 0.3) {
-        const progress = elapsed / 0.3;
-        scaleTarget = 1 - Math.pow(progress, 2);
+      if (elapsed < 0.4) {
+        const progress = elapsed / 0.4;
+        // Brief flare then collapse
+        if (progress < 0.15) {
+          const localT = progress / 0.15;
+          scaleTarget = 1 + 0.05 * localT;
         } else {
-        scaleTarget = 0;
+          const localT = (progress - 0.15) / 0.85;
+          const eased = Math.pow(localT, 2);
+          scaleTarget = 1.05 * (1 - eased);
         }
+      } else {
+        scaleTarget = 0;
+      }
     }
 
     group.scale.setScalar(scaleTarget);
     group.visible = scaleTarget > 0.005;
+
+    // 3. Z-drift during collapse — pull toward camera
+    if (!visible && visibilityChangedAt.current) {
+      const elapsed = t - visibilityChangedAt.current;
+      if (elapsed < 0.4) {
+        const driftProgress = Math.min(1, elapsed / 0.4);
+        group.position.z =
+          (position[2] ?? 0) + 0.8 * Math.pow(driftProgress, 2);
+      }
+    } else if (visible) {
+      // Reset to original position when becoming visible
+      group.position.z = position[2] ?? 0;
+    }
+
     if (!visible && scaleTarget <= 0.005) return;
 
+    // 4. Compute intensity boost — used by border + halo
+    let intensityBoost = 1;
+    if (visible && visibilityChangedAt.current) {
+      const elapsed = t - visibilityChangedAt.current;
+      if (elapsed < 0.5) {
+        intensityBoost = 1 + (1 - elapsed / 0.5) * 1.5;
+      }
+    } else if (!visible && visibilityChangedAt.current) {
+      const elapsed = t - visibilityChangedAt.current;
+      if (elapsed < 0.15) {
+        const localT = elapsed / 0.15;
+        intensityBoost = 1 + localT * 2;
+      }
+    }
 
+    // 5. Apply boost to border + halo (rest of existing useFrame code)
     // selected / dimmed content scale
     if (contentRef.current) {
       const s = selected ? 1.045 : dimmed ? 0.94 : 1;
@@ -328,47 +374,37 @@ export function PanelFrame({
       );
     }
 
-    // border shimmer + intensity
     borderMat.uniforms.uTime.value = t;
     const bi = selected ? 1.75 : dimmed ? 0.4 : 1.0;
     borderMat.uniforms.uIntensity.value = MathUtils.lerp(
       borderMat.uniforms.uIntensity.value,
-      bi,
+      bi * intensityBoost, // <-- multiply by boost
       0.15,
     );
 
-    // Compute emergence boost — extra intensity during the first 0.5s of being visible
-    let emergenceBoost = 1;
-    if (visible && visibilityChangedAt.current) {
-    const elapsed = t - visibilityChangedAt.current;
-    if (elapsed < 0.5) {
-        // Bright at start, decays to normal
-        emergenceBoost = 1 + (1 - elapsed / 0.5) * 1.5;
-    }
-    }
-
-    borderMat.uniforms.uIntensity.value = MathUtils.lerp(
-    borderMat.uniforms.uIntensity.value,
-    bi * emergenceBoost,    // multiply normal intensity by emergence boost
-    0.15,
-    );
-
-    // halo strength
     const hs = selected ? 0.55 : dimmed ? 0.08 : 0.3;
     haloMat.uniforms.uStrength.value = MathUtils.lerp(
       haloMat.uniforms.uStrength.value,
-      hs,
+      hs * intensityBoost, // <-- multiply by boost
       0.12,
     );
 
     // fill + inner glow opacity
     if (fillMat.current) {
       const o = selected ? 0.9 : dimmed ? 0.4 : 0.8;
-      fillMat.current.opacity = MathUtils.lerp(fillMat.current.opacity, o, 0.15);
+      fillMat.current.opacity = MathUtils.lerp(
+        fillMat.current.opacity,
+        o,
+        0.15,
+      );
     }
     if (glowMat.current) {
       const o = selected ? 0.32 : dimmed ? 0.05 : 0.14;
-      glowMat.current.opacity = MathUtils.lerp(glowMat.current.opacity, o, 0.15);
+      glowMat.current.opacity = MathUtils.lerp(
+        glowMat.current.opacity,
+        o,
+        0.15,
+      );
     }
 
     // bracket brightness (pulses when selected)
@@ -442,7 +478,11 @@ export function PanelFrame({
         </mesh>
 
         {/* glowing gradient border */}
-        <mesh geometry={frameGeo} material={borderMat} position={[0, 0, Z * 2]} />
+        <mesh
+          geometry={frameGeo}
+          material={borderMat}
+          position={[0, 0, Z * 2]}
+        />
 
         {/* scan line */}
         <mesh ref={scanRef} position={[0, 0, Z * 2.2]}>
@@ -480,13 +520,21 @@ export function PanelFrame({
         ))}
 
         {/* blinking status dot (top-right) */}
-        <mesh ref={dotRef} position={[width / 2 - 0.06, height / 2 - 0.055, Z * 3]}>
+        <mesh
+          ref={dotRef}
+          position={[width / 2 - 0.06, height / 2 - 0.055, Z * 3]}
+        >
           <circleGeometry args={[0.013, 16]} />
-          <meshBasicMaterial color={accentBright} transparent toneMapped={false} depthWrite={false} />
+          <meshBasicMaterial
+            color={accentBright}
+            transparent
+            toneMapped={false}
+            depthWrite={false}
+          />
         </mesh>
 
         {/* header underline accent */}
-        {variant === 'header' && (
+        {variant === "header" && (
           <mesh position={[0, -height / 2 + 0.07, Z * 2.5]}>
             <planeGeometry args={[width * 0.5, 0.006]} />
             <meshBasicMaterial
@@ -502,7 +550,7 @@ export function PanelFrame({
 
         {/* text */}
         <Text
-          position={[0, variant === 'header' ? 0.04 : 0, Z * 4]}
+          position={[0, variant === "header" ? 0.04 : 0, Z * 4]}
           fontSize={textSize}
           color="white"
           anchorX="center"
