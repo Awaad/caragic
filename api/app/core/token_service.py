@@ -9,11 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
-from ..models import Setting, Token, Visitor, VisitorSessionToken
+from ..models import Mode, Setting, Token, Visitor, VisitorSessionToken
 from .visitor_auth import VISITOR_COOKIE_NAME
-
-
-VALID_MODES = {"dating", "mix", "friendship", "professional"}
 
 
 def _hash(raw: str) -> str:
@@ -21,33 +18,70 @@ def _hash(raw: str) -> str:
 
 
 def _generate_raw() -> str:
-    # 32 bytes = 256 bits. token_urlsafe gives ~43 url-safe chars.
     return secrets.token_urlsafe(32)
 
 
-async def get_active_mode(db: AsyncSession) -> str:
-    """Read the active mode from settings. Falls back to 'friendship' if unset
-    (shouldn't happen — migration 003 seeds it — but defensive)."""
-    row = (await db.execute(select(Setting).where(Setting.key == "active_mode"))).scalar_one_or_none()
-    if row is None or row.value not in VALID_MODES:
-        return "friendship"
-    return row.value
-
-
-async def set_active_mode(db: AsyncSession, mode: str) -> str:
-    if mode not in VALID_MODES:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"invalid mode: {mode}",
-        )
-    row = (await db.execute(select(Setting).where(Setting.key == "active_mode"))).scalar_one_or_none()
+async def _mode_must_be_active(db: AsyncSession, mode_name: str) -> Mode:
+    """Resolve a mode name to a Mode row, refusing anything not 'active'.
+    Used by token minting and active-mode setting — both should only see
+    fully usable modes."""
+    row = (await db.execute(select(Mode).where(Mode.name == mode_name))).scalar_one_or_none()
     if row is None:
-        row = Setting(key="active_mode", value=mode)
-        db.add(row)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"mode not found: {mode_name}",
+        )
+    if row.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"mode {mode_name!r} is {row.status}, not active",
+        )
+    return row
+
+
+async def get_active_mode(db: AsyncSession) -> str:
+    """Read the active mode from settings.
+
+    Defensive fallback: if the configured mode no longer exists or isn't
+    active (e.g. owner deactivated it without updating the setting),
+    pick any active mode deterministically. Never returns a non-active mode."""
+    setting = (
+        await db.execute(select(Setting).where(Setting.key == "active_mode"))
+    ).scalar_one_or_none()
+    configured = setting.value if setting is not None else None
+
+    if isinstance(configured, str):
+        row = (
+            await db.execute(select(Mode).where(Mode.name == configured))
+        ).scalar_one_or_none()
+        if row is not None and row.status == "active":
+            return configured
+
+    # Fallback: any active mode, alphabetical for determinism.
+    fallback = (
+        await db.execute(
+            select(Mode).where(Mode.status == "active").order_by(Mode.name).limit(1)
+        )
+    ).scalar_one_or_none()
+    if fallback is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="no active modes configured",
+        )
+    return fallback.name
+
+
+async def set_active_mode(db: AsyncSession, mode_name: str) -> str:
+    await _mode_must_be_active(db, mode_name)
+    row = (
+        await db.execute(select(Setting).where(Setting.key == "active_mode"))
+    ).scalar_one_or_none()
+    if row is None:
+        db.add(Setting(key="active_mode", value=mode_name))
     else:
-        row.value = mode
+        row.value = mode_name
     await db.flush()
-    return mode
+    return mode_name
 
 
 async def mint_token(
@@ -57,12 +91,9 @@ async def mint_token(
     mode: str,
     label: str | None = None,
 ) -> tuple[str, Token]:
-    """Create a fresh token row. Returns (raw_token, row).
-    raw_token is the only time the unhashed value exists in memory."""
     if kind not in {"card", "link"}:
         raise ValueError(f"invalid token kind: {kind}")
-    if mode not in VALID_MODES:
-        raise ValueError(f"invalid mode: {mode}")
+    await _mode_must_be_active(db, mode)
 
     raw = _generate_raw()
     row = Token(
@@ -77,8 +108,6 @@ async def mint_token(
 
 
 async def resolve_link_token(db: AsyncSession, raw: str) -> Token:
-    """Resolve a kind='link' token from its raw value. Raises 404 if not found,
-    410 if revoked/inactive."""
     row = (
         await db.execute(
             select(Token).where(Token.token_hash == _hash(raw)).where(Token.kind == "link")
@@ -86,8 +115,11 @@ async def resolve_link_token(db: AsyncSession, raw: str) -> Token:
     ).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="token not found")
-    if row.revoked or not row.active:
-        raise HTTPException(status_code=status.HTTP_410_GONE, detail="token no longer valid")
+    if row.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=f"token is {row.status}",
+        )
     return row
 
 
@@ -96,14 +128,12 @@ async def mint_session_for_token(
     *,
     token: Token,
 ) -> tuple[str, Visitor, VisitorSessionToken]:
-    """Create a new visitor + session bound to the given token. Returns
-    (raw_session_token, visitor, session_row)."""
     settings = get_settings()
     now = datetime.now(timezone.utc)
 
     visitor = Visitor()
     db.add(visitor)
-    await db.flush()  # populate visitor.id
+    await db.flush()
 
     raw = _generate_raw()
     session_row = VisitorSessionToken(
@@ -115,7 +145,6 @@ async def mint_session_for_token(
     )
     db.add(session_row)
 
-    # Mark the token used
     token.tap_count = (token.tap_count or 0) + 1
     token.last_used_at = now
 
@@ -124,10 +153,6 @@ async def mint_session_for_token(
 
 
 async def revoke_existing_session_cookie(db: AsyncSession, raw_cookie: str | None) -> None:
-    """If the incoming request carries an old visitor_session cookie, mark
-    that session revoked. Called when a fresh tap/link mints a new session
-    on top of an existing one — prevents the old session from continuing
-    to work alongside the new."""
     if raw_cookie is None:
         return
     old = (
@@ -142,7 +167,6 @@ async def revoke_existing_session_cookie(db: AsyncSession, raw_cookie: str | Non
 
 
 def set_visitor_session_cookie(response: Response, raw_token: str) -> None:
-    """Shared cookie writer. Same shape as the original visitor_session cookie."""
     settings = get_settings()
     response.set_cookie(
         key=VISITOR_COOKIE_NAME,

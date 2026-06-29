@@ -56,7 +56,7 @@ async def get_session_token_for_visitor(
     token = (
         await db.execute(select(Token).where(Token.id == session_row.token_id))
     ).scalar_one_or_none()
-    if token is None or token.revoked or not token.active:
+    if token is None or token.status != "active":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="token no longer valid"
         )

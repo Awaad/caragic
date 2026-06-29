@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class CreateTokenRequest(BaseModel):
-    mode: str = Field(pattern="^(dating|mix|friendship|professional)$")
+    mode: str = Field(min_length=1, max_length=32)  # was pattern="^(dating|...)$"
     label: str | None = Field(default=None, max_length=255)
 
 
@@ -20,7 +20,7 @@ class CreateTokenResponse(BaseModel):
 
 
 class SetActiveModeRequest(BaseModel):
-    mode: str = Field(pattern="^(dating|mix|friendship|professional)$")
+    mode: str = Field(min_length=1, max_length=32)
 
 
 class ActiveModeResponse(BaseModel):
