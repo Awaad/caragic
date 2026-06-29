@@ -1,12 +1,39 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
+from .core.errors import install_error_handlers
 
 from .api import auth as auth_routes
 from .api import visitor as visitor_routes
 from .api import admin as admin_routes
 from .api import content as content_routes
+
+
+
+# Structured-ish logging. Includes the request_id in every record's extra dict.
+# Production can swap this for python-json-logger or similar; the field names
+# are already shaped right.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s [req=%(request_id)s] %(message)s",
+    stream=sys.stdout,
+)
+
+
+class _RequestIdFilter(logging.Filter):
+    """Ensures the request_id field always exists on log records, so the
+    format string above doesn't blow up on logs that don't pass one."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if not hasattr(record, "request_id"):
+            record.request_id = "-"
+        return True
+
+
+logging.getLogger().addFilter(_RequestIdFilter())
 
 settings = get_settings()
 
@@ -32,7 +59,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"], 
 )
+
+install_error_handlers(app)
 
 app.include_router(auth_routes.router, prefix="/api")
 app.include_router(admin_routes.router, prefix="/api")
