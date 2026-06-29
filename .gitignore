@@ -62,3 +62,8 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+
+cookies.txt
+v.txt
+v.txt.bak
+vd.txt.bak
