@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # In dev: COOKIE_SECURE=false in .env so cookie works over http://localhost.
     # In prod (HTTPS via Cloudflare Tunnel): leave true.
     cookie_secure: bool = True
+    
+    # Used to construct shareable token URLs in the admin response.
+    # Set per environment: http://localhost:8000 locally, https://card-dev.gedoawad.com in dev VPS.
+    public_base_url: str = "http://localhost:8000"
 
     @property
     def cors_origin_list(self) -> list[str]:
