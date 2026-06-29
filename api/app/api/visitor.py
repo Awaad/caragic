@@ -1,60 +1,66 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response, HTTPException
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..core.visitor_auth import (
-    VISITOR_COOKIE_NAME,
-    create_visitor_with_session,
-    resolve_session,
+from ..core.token_service import (
+    get_active_mode,
+    mint_session_for_token,
+    mint_token,
+    resolve_link_token,
+    revoke_existing_session_cookie,
+    set_visitor_session_cookie,
 )
+from ..core.visitor_auth import VISITOR_COOKIE_NAME
 from ..db import get_db
-from ..schemas import VisitorSessionResponse
-from .deps import _set_visitor_cookie
 
-router = APIRouter(prefix="/visitor", tags=["visitor"])
+# These endpoints live at the root (no /api prefix) — they're user-facing URLs
+# that get burnt into NFC cards or sent as links. We want them short.
+router = APIRouter(tags=["visitor-entry"])
 
 
-@router.post("/session", response_model=VisitorSessionResponse)
-async def init_session(
+@router.get("/tap")
+async def tap(
     request: Request,
-    response: Response,
     db: AsyncSession = Depends(get_db),
-) -> VisitorSessionResponse:
-    """Idempotent.
+) -> RedirectResponse:
+    """NFC card endpoint. Every tap mints a fresh card-kind token + new visitor
+    + new session, then redirects into the app.
 
-    - If no cookie OR cookie is invalid/expired: create a new visitor + token,
-      set the cookie, return new session info.
-    - If cookie is valid: return existing session info, rotating + reissuing
-      the cookie if the rotate threshold has passed.
-    """
-    raw = request.cookies.get(VISITOR_COOKIE_NAME)
-    rotated = False
+    Mode is read from settings.active_mode (owner-controlled).
+    Existing session cookies are revoked — each tap is a fresh visitor."""
+    mode = await get_active_mode(db)
+    _, token = await mint_token(db, kind="card", mode=mode, label=None)
+    raw_session, _visitor, _row = await mint_session_for_token(db, token=token)
 
-    if raw is not None:
-        try:
-            visitor, active_row, new_raw = await resolve_session(db, raw)
-            if new_raw is not None:
-                _set_visitor_cookie(response, new_raw)
-                rotated = True
-            await db.commit()
-            return VisitorSessionResponse(
-                visitor_id=visitor.id,
-                issued_at=active_row.issued_at,
-                expires_at=active_row.expires_at,
-                rotated=rotated,
-            )
-        except HTTPException as e:
-            if e.status_code != 401:
-                raise
-            await db.rollback()
+    old_cookie = request.cookies.get(VISITOR_COOKIE_NAME)
+    await revoke_existing_session_cookie(db, old_cookie)
 
-    raw_new, row, visitor = await create_visitor_with_session(db)
     await db.commit()
-    _set_visitor_cookie(response, raw_new)
-    return VisitorSessionResponse(
-        visitor_id=visitor.id,
-        issued_at=row.issued_at,
-        expires_at=row.expires_at,
-        rotated=False,
-    )
+
+    response = RedirectResponse(url="/", status_code=303)
+    set_visitor_session_cookie(response, raw_session)
+    return response
+
+
+@router.get("/c/{token}")
+async def consume_link(
+    token: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Pre-generated link endpoint. Resolves the token, mints a session bound
+    to it, redirects into the app. Multi-use — each tap is a fresh visitor on
+    the same token (tap_count tracks how many)."""
+    token_row = await resolve_link_token(db, token)
+    raw_session, _visitor, _row = await mint_session_for_token(db, token=token_row)
+
+    old_cookie = request.cookies.get(VISITOR_COOKIE_NAME)
+    await revoke_existing_session_cookie(db, old_cookie)
+
+    await db.commit()
+
+    response = RedirectResponse(url="/", status_code=303)
+    set_visitor_session_cookie(response, raw_session)
+    return response
