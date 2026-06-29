@@ -50,6 +50,12 @@ class VisitorSessionToken(Base):
         nullable=False,
         index=True,
     )
+    token_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tokens.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     issued_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
