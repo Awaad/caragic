@@ -1,0 +1,312 @@
+{
+  "modes": [
+    {
+      "name": "dating",
+      "reveal": {
+        "name": "abdelrahman",
+        "tagline": "",
+        "links": []
+      },
+      "rounds": [
+        {
+          "slug": "dating-1",
+          "round_type": "choice",
+          "data": {
+            "question": "what's worse: being misunderstood, or being seen too clearly?",
+            "options": [
+              {
+                "id": "misunderstood",
+                "label": "being misunderstood",
+                "revealText": "yeah? so you'd rather be a mystery than be known. that's safer, sure."
+              },
+              {
+                "id": "seen",
+                "label": "being seen too clearly",
+                "revealText": "the real ones pick this. though usually it's less about being seen and more about who you'd let look."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "dating-2",
+          "round_type": "choice",
+          "data": {
+            "question": "when something feels too good, do you lean in or get suspicious?",
+            "options": [
+              {
+                "id": "lean-in",
+                "label": "lean in",
+                "revealText": "you trust the moment. brave or naive — depends who's watching."
+              },
+              {
+                "id": "suspicious",
+                "label": "get suspicious",
+                "revealText": "right. because you've been the one holding the bag before. that doesn't go away, does it."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "dating-3",
+          "round_type": "choice",
+          "data": {
+            "question": "would you rather be wanted desperately, or chosen quietly?",
+            "options": [
+              {
+                "id": "wanted",
+                "label": "wanted desperately",
+                "revealText": "you want the proof. someone breaking themselves a little to have you. that's not wrong — it's just expensive."
+              },
+              {
+                "id": "chosen",
+                "label": "chosen quietly",
+                "revealText": "you've been wanted loudly before and it wasn't enough. quiet feels like it might be the real thing this time."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "capture-dating",
+          "round_type": "capture",
+          "data": {
+            "prompt": "okay. you've been honest with me. your turn to let me find you.",
+            "acceptLabel": "leave your number",
+            "declineLabel": "not yet",
+            "declineMessage": "fair. you know where i am."
+          }
+        }
+      ]
+    },
+    {
+      "name": "mix",
+      "reveal": {
+        "name": "abdelrahman",
+        "tagline": "",
+        "links": []
+      },
+      "rounds": [
+        {
+          "slug": "mix-1",
+          "round_type": "choice",
+          "data": {
+            "question": "are you more interesting when you're winning, or when you're losing?",
+            "options": [
+              {
+                "id": "winning",
+                "label": "winning",
+                "revealText": "yeah. you sharpen when things are clicking. that energy is contagious — when you're in it."
+              },
+              {
+                "id": "losing",
+                "label": "losing",
+                "revealText": "you become real when you're losing. that's rarer than it sounds, and harder to be around."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "mix-2",
+          "round_type": "choice",
+          "data": {
+            "question": "do people end up telling you their secrets, or do you end up telling them yours?",
+            "options": [
+              {
+                "id": "theirs",
+                "label": "they tell me theirs",
+                "revealText": "you're the room people empty into. don't pretend you don't notice the asymmetry."
+              },
+              {
+                "id": "mine",
+                "label": "i tell them mine",
+                "revealText": "you spill first to make it safe. it works. it also means you're often the one who knows yourself less by the end."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "mix-3",
+          "round_type": "choice",
+          "data": {
+            "question": "what do you want more of, intensity or peace?",
+            "options": [
+              {
+                "id": "intensity",
+                "label": "intensity",
+                "revealText": "you'll burn through peace looking for the next thing. you know this about yourself."
+              },
+              {
+                "id": "peace",
+                "label": "peace",
+                "revealText": "you're tired. that's not a flaw — it's a season. don't let anyone hand you intensity dressed up as connection."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "capture-mix",
+          "round_type": "capture",
+          "data": {
+            "prompt": "you read the room well. whether this becomes something — or nothing — depends on what you do next.",
+            "acceptLabel": "leave your number",
+            "declineLabel": "maybe another time",
+            "declineMessage": "okay. friends, then. you know where i am."
+          }
+        }
+      ]
+    },
+    {
+      "name": "friendship",
+      "reveal": {
+        "name": "abdelrahman",
+        "tagline": "",
+        "links": []
+      },
+      "rounds": [
+        {
+          "slug": "friendship-1",
+          "round_type": "choice",
+          "data": {
+            "question": "are you the friend who plans everything, or the one who shows up to whatever?",
+            "options": [
+              {
+                "id": "planner",
+                "label": "plans everything",
+                "revealText": "you're the reason your group still hangs out. they'd be on three different couches without you."
+              },
+              {
+                "id": "shows-up",
+                "label": "shows up to whatever",
+                "revealText": "you make the planners feel useful. that's its own kind of work. also you're more spontaneous than your friends give you credit for."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "friendship-2",
+          "round_type": "choice",
+          "data": {
+            "question": "in a group, are you the one keeping things light, or the one asking the real question?",
+            "options": [
+              {
+                "id": "light",
+                "label": "keeping it light",
+                "revealText": "you read the room and adjust. that's not avoidance — that's care. though you probably wish someone asked you the real question sometimes."
+              },
+              {
+                "id": "real",
+                "label": "asking the real question",
+                "revealText": "you can't help it. people either love this about you or find it exhausting — there's no middle ground, and you've made peace with that."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "friendship-3",
+          "round_type": "choice",
+          "data": {
+            "question": "would you rather have one friend who really gets you, or three who you can call about anything?",
+            "options": [
+              {
+                "id": "one-deep",
+                "label": "one who gets me",
+                "revealText": "you'd rather be deeply understood than widely available. that's harder to find but worth holding out for."
+              },
+              {
+                "id": "three-wide",
+                "label": "three to call",
+                "revealText": "you've figured out that one person can't be everything. spread the weight. that's wisdom most people learn the hard way."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "capture-friendship",
+          "round_type": "capture",
+          "data": {
+            "prompt": "if you ever want to actually do this — the asking real questions, the showing up — leave your number.",
+            "acceptLabel": "leave your number",
+            "declineLabel": "maybe later",
+            "declineMessage": "no pressure. people who'd vibe with you are rarer than they should be."
+          }
+        }
+      ]
+    },
+    {
+      "name": "professional",
+      "reveal": {
+        "name": "abdelrahman",
+        "tagline": "",
+        "links": []
+      },
+      "rounds": [
+        {
+          "slug": "professional-1",
+          "round_type": "choice",
+          "data": {
+            "question": "when a project's in trouble, do you focus on what's broken or on what's still working?",
+            "options": [
+              {
+                "id": "broken",
+                "label": "what's broken",
+                "revealText": "you go to the wound. it's the right instinct under deadline — but the people working on what's still working don't always feel seen."
+              },
+              {
+                "id": "working",
+                "label": "what's still working",
+                "revealText": "you stabilize first. saves projects from death spirals. but sometimes the broken thing needed to break, and protecting it costs more than letting it fail."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "professional-2",
+          "round_type": "choice",
+          "data": {
+            "question": "when you disagree with a decision, do you push hard or wait and see?",
+            "options": [
+              {
+                "id": "push",
+                "label": "push hard",
+                "revealText": "you'd rather lose the argument than not have it. people respect this — even the ones who roll their eyes."
+              },
+              {
+                "id": "wait",
+                "label": "wait and see",
+                "revealText": "you're playing a longer game. it works, until the thing you waited on becomes the thing you have to live with."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "professional-3",
+          "round_type": "choice",
+          "data": {
+            "question": "what does a good day at work actually feel like — momentum, or mastery?",
+            "options": [
+              {
+                "id": "momentum",
+                "label": "momentum",
+                "revealText": "you need things to be moving. you'd rather ship imperfect and iterate than perfect in a vacuum. fast companies need this; slow ones break you."
+              },
+              {
+                "id": "mastery",
+                "label": "mastery",
+                "revealText": "you want the thing to be good, not just done. that's increasingly rare. it also means you need to choose where you work very carefully — most places don't have time for your standard."
+              }
+            ]
+          }
+        },
+        {
+          "slug": "capture-professional",
+          "round_type": "capture",
+          "data": {
+            "prompt": "if any of that landed — if you want to keep this conversation going past today — drop your number.",
+            "acceptLabel": "drop your number",
+            "declineLabel": "not now",
+            "declineMessage": "understood. the card stays. you've got it if you need it."
+          }
+        }
+      ]
+    }
+  ]
+}

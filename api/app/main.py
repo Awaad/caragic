@@ -6,6 +6,7 @@ from .config import get_settings
 from .api import auth as auth_routes
 from .api import visitor as visitor_routes
 from .api import admin as admin_routes
+from .api import content as content_routes
 
 settings = get_settings()
 
@@ -34,7 +35,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_routes.router, prefix="/api")
-app.include_router(admin_routes.router, prefix="/api") 
+app.include_router(admin_routes.router, prefix="/api")
+app.include_router(content_routes.router, prefix="/api")
 app.include_router(visitor_routes.router)
 
 @app.get("/api/health")
