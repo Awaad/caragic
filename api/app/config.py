@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     database_url: str
     secret_key: str
     master_encryption_key: str  # base64-encoded 32 bytes
-    admin_username: str
+    phone_hash_key: str         # base64-encoded 32 bytes — HMAC-SHA256 key for phone fingerprinting
     admin_password_hash: str
     admin_totp_secret: str
     cors_origins: str
@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # Used to construct shareable token URLs in the admin response.
     # Set per environment: http://localhost:8000 locally, https://card-dev.gedoawad.com in dev VPS.
     public_base_url: str = "http://localhost:8000"
+    
+    # Default region for E.164 phone parsing. Visitors are mostly in North Cyprus
+    # which uses Turkish numbering (+90). Frontend picker can override per submission.
+    default_phone_region: str = "TR"
 
     @property
     def cors_origin_list(self) -> list[str]:
