@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any
 from pydantic import BaseModel
+from uuid import UUID
 
 
 class ChoiceOption(BaseModel):
@@ -35,6 +36,7 @@ class RevealOut(BaseModel):
 
 class ModeContentOut(BaseModel):
     mode: str
+    session_id: UUID 
     rounds: list[RoundOut]
     reveal: RevealOut
     updated_at: datetime

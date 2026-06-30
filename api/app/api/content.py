@@ -82,6 +82,7 @@ async def get_content(
 
     return ModeContentOut(
         mode=mode_name,
+        session_id=_session.id,
         rounds=[RoundOut(id=r.slug, type=r.round_type, data=r.data) for r in rounds],
         reveal=RevealOut(
             name=reveal.name, tagline=reveal.tagline, links=list(reveal.links or [])
