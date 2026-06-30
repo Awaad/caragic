@@ -1,5 +1,5 @@
 import { useFlow } from "../../flow/useFlow";
-import { getContentForMode } from "../../modes/content";
+import { useContent } from "../../api/hooks";
 import { PanelFrame } from "./PanelFrame";
 import { TypewriterText } from "./TypewriterText";
 import type { Mode } from "../../modes/types";
@@ -51,7 +51,6 @@ function getAccentColors(mode: Mode): { primary: string; secondary: string } {
 }
 
 export function RoundPanel() {
-  console.log("RoundPanel called");
   const {
     phase,
     mode,
@@ -61,19 +60,23 @@ export function RoundPanel() {
     coreInPosition,
     setSelectedOption,
   } = useFlow();
-  console.log("RoundPanel render:", { phase, roundStarted, coreInPosition });
+
   const responsiveScale = useResponsiveScale();
+
+  const { data: content } = useContent();
 
   if (phase !== "round" && phase !== "warping") return null;
   if (!roundStarted) return null;
+  if (!content) return null;
 
-  const content = getContentForMode(mode);
   const round = content.rounds[roundIndex];
   if (!round || round.type !== "choice") return null;
 
+  const { question, options } = round.data;
+
   const { primary: accent, secondary } = getAccentColors(mode);
   const selectedOption = selectedOptionId
-    ? round.options.find((o) => o.id === selectedOptionId)
+    ? options.find((o) => o.id === selectedOptionId)
     : null;
 
   const headerRotation: [number, number, number] = [-0.08, 0.18, 0];
@@ -84,7 +87,7 @@ export function RoundPanel() {
       <PanelFrame
         width={HEADER_WIDTH}
         height={HEADER_HEIGHT}
-        text={round.question}
+        text={question}
         textSize={0.085}
         position={[0, HEADER_Y, PANEL_Z]}
         rotation={headerRotation}
@@ -95,11 +98,11 @@ export function RoundPanel() {
       />
 
       {/* Choices */}
-      {round.options.map((option, i) => {
+      {options.map((option, i) => {
         const isSelected = selectedOptionId === option.id;
         const isUnselected =
           selectedOptionId !== null && selectedOptionId !== option.id;
-        const rotation = getRotationForIndex(i, round.options.length);
+        const rotation = getRotationForIndex(i, options.length);
 
         return (
           <PanelFrame
@@ -131,15 +134,15 @@ export function RoundPanel() {
           position={[
             0,
             CHOICES_START_Y -
-              round.options.findIndex((o) => o.id === selectedOption.id) *
+              options.findIndex((o) => o.id === selectedOption.id) *
                 CHOICE_SPACING -
               CHOICE_HEIGHT / 2 -
               0.18,
             PANEL_Z + 0.1,
           ]}
           rotation={getRotationForIndex(
-            round.options.findIndex((o) => o.id === selectedOption.id),
-            round.options.length,
+            options.findIndex((o) => o.id === selectedOption.id),
+            options.length,
           )}
         >
           <TypewriterText

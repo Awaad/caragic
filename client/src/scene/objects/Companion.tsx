@@ -1,5 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useQueryClient } from "@tanstack/react-query";
+import type { ContentResponse } from "../../api/types";
 import {
   type Group,
   type Mesh,
@@ -14,7 +16,6 @@ import {
 import { Icosahedron } from "@react-three/drei";
 import { useFlow } from "../../flow/useFlow";
 import { useWarpProgress } from "../../flow/useWarpProgress";
-import { getContentForMode } from "../../modes/content";
 
 const SHARD_COUNT = 5;
 const ORBIT_RADIUS = 0.7;
@@ -72,7 +73,6 @@ export function Companion() {
     phase,
     setPhase,
     hasWarpedBefore,
-    mode,
     roundIndex,
     roundStarted,
     recordAnswer,
@@ -83,7 +83,9 @@ export function Companion() {
     setCoreInPosition,
     setPendingArrivalPhase,
   } = useFlow();
+
   const warp = useWarpProgress();
+  const queryClient = useQueryClient();
 
   const configs = useMemo(() => createShardConfigs(), []);
   const tempVec = useMemo(() => new Vector3(), []);
@@ -112,11 +114,15 @@ export function Companion() {
   // After selection: record answer + advance after delay
   useEffect(() => {
     if (!selectedOptionId) return;
-    const content = getContentForMode(mode);
+    const content = queryClient.getQueryData<ContentResponse>(["content"]);
+    if (!content) return;
+
     const round = content.rounds[roundIndex];
     if (!round || round.type !== "choice") return;
 
-    const selectedOption = round.options.find((o) => o.id === selectedOptionId);
+    const selectedOption = round.data.options.find(
+      (o) => o.id === selectedOptionId,
+    );
     if (!selectedOption) return;
 
     recordAnswer(round.id, selectedOptionId);
@@ -158,7 +164,7 @@ export function Companion() {
     };
   }, [
     selectedOptionId,
-    mode,
+    queryClient,
     roundIndex,
     recordAnswer,
     advanceRound,

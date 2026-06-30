@@ -8,20 +8,28 @@ export interface ChoiceRoundOption {
   revealText: string;
 }
 
+export interface ChoiceRoundData {
+  question: string;
+  options: ChoiceRoundOption[];
+}
+
+export interface CaptureRoundData {
+  prompt: string;
+  acceptLabel: string;
+  declineLabel: string;
+  declineMessage: string;
+}
+
 export interface ChoiceRound {
   type: 'choice';
   id: string;
-  question: string;
-  options: ChoiceRoundOption[];
+  data: ChoiceRoundData;
 }
 
 export interface CaptureRound {
   type: 'capture';
   id: string;
-  prompt: string;
-  declineLabel: string;
-  acceptLabel: string;
-  declineMessage: string;
+  data: CaptureRoundData;
 }
 
 export type Round = ChoiceRound | CaptureRound;
@@ -43,8 +51,7 @@ export type ShardRole = 'active' | 'ambient' | 'idle' | 'invitation' | 'flying' 
 
 export interface ShardState {
   role: ShardRole;
-  optionId?: string; // present when role === 'active' and tied to a choice
+  optionId?: string;
   isSelected?: boolean;
   isDimmed?: boolean;
 }
-

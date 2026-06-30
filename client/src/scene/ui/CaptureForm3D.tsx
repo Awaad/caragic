@@ -1,24 +1,24 @@
-import { useState } from 'react';
-import { Html } from '@react-three/drei';
-import { useFlow } from '../../flow/useFlow';
-import { getContentForMode } from '../../modes/content';
-import { PanelFrame } from './PanelFrame';
-import { TypewriterText } from './TypewriterText';
-import { useResponsiveScale } from '../hooks/useResponsiveScale';
-import type { Mode } from '../../modes/types';
+import { useState } from "react";
+import { Html } from "@react-three/drei";
+import { useFlow } from "../../flow/useFlow";
+import { useContent } from "../../api/hooks";
+import { PanelFrame } from "./PanelFrame";
+import { TypewriterText } from "./TypewriterText";
+import { useResponsiveScale } from "../hooks/useResponsiveScale";
+import type { Mode } from "../../modes/types";
 
 function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
-    case 'dating':
-      return { primary: '#ff3ad8', secondary: '#00e5ff' };
-    case 'friendship':
-      return { primary: '#3aeae0', secondary: '#b14aff' };
-    case 'professional':
-      return { primary: '#3a8aff', secondary: '#2ee6ff' };
-    case 'mix':
-      return { primary: '#c060d8', secondary: '#3affd0' };
+    case "dating":
+      return { primary: "#ff3ad8", secondary: "#00e5ff" };
+    case "friendship":
+      return { primary: "#3aeae0", secondary: "#b14aff" };
+    case "professional":
+      return { primary: "#3a8aff", secondary: "#2ee6ff" };
+    case "mix":
+      return { primary: "#c060d8", secondary: "#3affd0" };
     default:
-      return { primary: '#88aaff', secondary: '#46f0ff' };
+      return { primary: "#88aaff", secondary: "#46f0ff" };
   }
 }
 
@@ -33,22 +33,26 @@ const HEADER_Y = 0.85;
 export function CaptureFormPanel() {
   const { phase, mode, roundIndex, setPhase } = useFlow();
   const responsiveScale = useResponsiveScale();
-  const [step, setStep] = useState<'choice' | 'form' | 'declined'>('choice');
-  const [name, setName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const { data: content } = useContent();
 
-  if (phase !== 'capturing') return null;
+  const [step, setStep] = useState<"choice" | "form" | "declined">("choice");
+  const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
-  const content = getContentForMode(mode);
+  if (phase !== "capturing") return null;
+  if (!content) return null;
+
   const round = content.rounds[roundIndex];
-  if (!round || round.type !== 'capture') return null;
+  if (!round || round.type !== "capture") return null;
+
+  const { prompt, acceptLabel, declineLabel, declineMessage } = round.data;
 
   const { primary: accent, secondary } = getAccentColors(mode);
 
   const handleSubmit = () => {
     if (!name.trim() || !phoneNumber.trim()) return;
-    console.log('Capture submission:', { name, phoneNumber, mode });
-    setPhase('reveal');
+    console.log("Capture submission:", { name, phoneNumber, mode });
+    setPhase("reveal");
   };
 
   return (
@@ -57,7 +61,7 @@ export function CaptureFormPanel() {
       <PanelFrame
         width={HEADER_WIDTH}
         height={HEADER_HEIGHT}
-        text={step === 'declined' ? round.declineMessage : round.prompt}
+        text={step === "declined" ? declineMessage : prompt}
         textSize={0.085}
         position={[0, HEADER_Y, 1.2]}
         rotation={[-0.08, 0.18, 0]}
@@ -68,12 +72,12 @@ export function CaptureFormPanel() {
       />
 
       {/* Choice step — accept or decline */}
-      {step === 'choice' && (
+      {step === "choice" && (
         <>
           <PanelFrame
             width={BUTTON_WIDTH}
             height={BUTTON_HEIGHT}
-            text={round.declineLabel}
+            text={declineLabel}
             textSize={0.07}
             position={[0, 0.15, 1.2]}
             rotation={[-0.08, 0.22, 0]}
@@ -81,12 +85,12 @@ export function CaptureFormPanel() {
             accentColor={accent}
             accentColorSecondary={secondary}
             variant="choice"
-            onClick={() => setStep('declined')}
+            onClick={() => setStep("declined")}
           />
           <PanelFrame
             width={BUTTON_WIDTH}
             height={BUTTON_HEIGHT}
-            text={round.acceptLabel}
+            text={acceptLabel}
             textSize={0.07}
             position={[0, -0.4, 1.2]}
             rotation={[-0.08, 0.22, 0]}
@@ -95,13 +99,13 @@ export function CaptureFormPanel() {
             accentColorSecondary={secondary}
             variant="choice"
             selected
-            onClick={() => setStep('form')}
+            onClick={() => setStep("form")}
           />
         </>
       )}
 
       {/* Form step — name + number inputs */}
-      {step === 'form' && (
+      {step === "form" && (
         <>
           {/* Inputs via Html overlay positioned where a panel would sit */}
           <Html
@@ -110,18 +114,18 @@ export function CaptureFormPanel() {
             rotation={[-0.08, 0.22, 0]}
             distanceFactor={4.5}
             style={{
-              width: 'min(360px, 78vw)',
-              pointerEvents: 'auto',
+              width: "min(360px, 78vw)",
+              pointerEvents: "auto",
             }}
             zIndexRange={[20, 0]}
           >
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
+                display: "flex",
+                flexDirection: "column",
                 gap: 12,
                 padding: 16,
-                background: 'rgba(5, 2, 26, 0.85)',
+                background: "rgba(5, 2, 26, 0.85)",
                 border: `1.5px solid ${accent}`,
                 borderRadius: 8,
                 boxShadow: `0 0 24px ${accent}, inset 0 0 12px rgba(${hexToRgb(accent)}, 0.15)`,
@@ -150,7 +154,9 @@ export function CaptureFormPanel() {
                   ...submitButtonStyle(accent),
                   opacity: name.trim() && phoneNumber.trim() ? 1 : 0.4,
                   cursor:
-                    name.trim() && phoneNumber.trim() ? 'pointer' : 'not-allowed',
+                    name.trim() && phoneNumber.trim()
+                      ? "pointer"
+                      : "not-allowed",
                 }}
               >
                 send
@@ -161,7 +167,7 @@ export function CaptureFormPanel() {
       )}
 
       {/* Declined step — just the message in the header, with a typewriter farewell */}
-      {step === 'declined' && (
+      {step === "declined" && (
         <group position={[0, -0.1, 1.3]} rotation={[-0.08, 0.18, 0]}>
           <TypewriterText
             text="thanks for tapping. ✌️"
@@ -179,14 +185,14 @@ export function CaptureFormPanel() {
 
 function inputStyle(accent: string): React.CSSProperties {
   return {
-    padding: '12px 14px',
-    background: 'rgba(0, 0, 0, 0.4)',
+    padding: "12px 14px",
+    background: "rgba(0, 0, 0, 0.4)",
     border: `1px solid ${accent}88`,
     borderRadius: 4,
-    color: 'white',
+    color: "white",
     fontSize: 15,
-    fontFamily: 'monospace',
-    outline: 'none',
+    fontFamily: "monospace",
+    outline: "none",
     letterSpacing: 0.5,
     boxShadow: `inset 0 0 8px rgba(0,0,0,0.5)`,
   };
@@ -194,22 +200,22 @@ function inputStyle(accent: string): React.CSSProperties {
 
 function submitButtonStyle(accent: string): React.CSSProperties {
   return {
-    padding: '12px 14px',
-    background: 'transparent',
+    padding: "12px 14px",
+    background: "transparent",
     border: `1.5px solid ${accent}`,
     borderRadius: 4,
     color: accent,
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: "monospace",
     letterSpacing: 2,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     fontWeight: 600,
     boxShadow: `0 0 12px ${accent}88`,
   };
 }
 
 function hexToRgb(hex: string): string {
-  const clean = hex.replace('#', '');
+  const clean = hex.replace("#", "");
   const r = parseInt(clean.slice(0, 2), 16);
   const g = parseInt(clean.slice(2, 4), 16);
   const b = parseInt(clean.slice(4, 6), 16);

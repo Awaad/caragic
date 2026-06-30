@@ -1,35 +1,37 @@
-import { useEffect, useState } from 'react';
-import { Html, Text } from '@react-three/drei';
-import { useFlow } from '../../flow/useFlow';
-import { getContentForMode } from '../../modes/content';
-import { PanelFrame } from './PanelFrame';
-import { TypewriterText } from './TypewriterText';
-import { useResponsiveScale } from '../hooks/useResponsiveScale';
-import type { Mode } from '../../modes/types';
+import { useEffect, useState } from "react";
+import { Html, Text } from "@react-three/drei";
+import { useFlow } from "../../flow/useFlow";
+import { useContent } from "../../api/hooks";
+import { PanelFrame } from "./PanelFrame";
+import { TypewriterText } from "./TypewriterText";
+import { useResponsiveScale } from "../hooks/useResponsiveScale";
+import type { Mode } from "../../modes/types";
 
 function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
-    case 'dating':
-      return { primary: '#ff3ad8', secondary: '#00e5ff' };
-    case 'friendship':
-      return { primary: '#3aeae0', secondary: '#b14aff' };
-    case 'professional':
-      return { primary: '#3a8aff', secondary: '#2ee6ff' };
-    case 'mix':
-      return { primary: '#c060d8', secondary: '#3affd0' };
+    case "dating":
+      return { primary: "#ff3ad8", secondary: "#00e5ff" };
+    case "friendship":
+      return { primary: "#3aeae0", secondary: "#b14aff" };
+    case "professional":
+      return { primary: "#3a8aff", secondary: "#2ee6ff" };
+    case "mix":
+      return { primary: "#c060d8", secondary: "#3affd0" };
     default:
-      return { primary: '#88aaff', secondary: '#46f0ff' };
+      return { primary: "#88aaff", secondary: "#46f0ff" };
   }
 }
 
 export function RevealPanel() {
   const { phase, mode } = useFlow();
   const responsiveScale = useResponsiveScale();
+  const { data: content } = useContent();
+
   const [showTagline, setShowTagline] = useState(false);
   const [showLinks, setShowLinks] = useState(false);
 
   useEffect(() => {
-    if (phase !== 'reveal') {
+    if (phase !== "reveal") {
       setShowTagline(false);
       setShowLinks(false);
       return;
@@ -42,9 +44,9 @@ export function RevealPanel() {
     };
   }, [phase]);
 
-  if (phase !== 'reveal') return null;
+  if (phase !== "reveal") return null;
+  if (!content) return null;
 
-  const content = getContentForMode(mode);
   const { reveal } = content;
   const { primary: accent, secondary } = getAccentColors(mode);
 
@@ -95,7 +97,9 @@ export function RevealPanel() {
               accentColor={accent}
               accentColorSecondary={secondary}
               variant="choice"
-              onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+              onClick={() =>
+                window.open(link.url, "_blank", "noopener,noreferrer")
+              }
             />
           ))}
         </group>
@@ -108,15 +112,15 @@ export function RevealPanel() {
           position={[0, -0.3, 1.2]}
           rotation={[-0.08, 0.18, 0]}
           distanceFactor={5}
-          style={{ pointerEvents: 'none', width: 200, textAlign: 'center' }}
+          style={{ pointerEvents: "none", width: 200, textAlign: "center" }}
         >
           <div
             style={{
               color: `${accent}aa`,
               fontSize: 13,
-              fontFamily: 'monospace',
+              fontFamily: "monospace",
               letterSpacing: 1.5,
-              textTransform: 'uppercase',
+              textTransform: "uppercase",
             }}
           >
             // links coming soon

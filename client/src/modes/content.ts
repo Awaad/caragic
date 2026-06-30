@@ -1,3 +1,10 @@
+/**
+ * @deprecated Content now comes from the API via useContent().
+ * Kept temporarily for reference; remove once API wiring has been
+ * validated against all four modes. parseModeFromUrl still uses the
+ * Mode type from ./types, which is unrelated to this file.
+ */
+
 import type { ModeContent } from './types';
 
 const datingContent: ModeContent = {
