@@ -11,4 +11,5 @@ __all__ = [
     "Mode",
     "Round",
     "Reveal",
+    "Submission",
 ]
