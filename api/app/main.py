@@ -10,6 +10,7 @@ from .api import auth as auth_routes
 from .api import visitor as visitor_routes
 from .api import admin as admin_routes
 from .api import content as content_routes
+from .api import submission as submission_routes
 
 
 
@@ -67,6 +68,7 @@ install_error_handlers(app)
 app.include_router(auth_routes.router, prefix="/api")
 app.include_router(admin_routes.router, prefix="/api")
 app.include_router(content_routes.router, prefix="/api")
+app.include_router(submission_routes.router, prefix="/api")
 app.include_router(visitor_routes.router)
 
 @app.get("/api/health")
