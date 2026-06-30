@@ -19,6 +19,13 @@ from ..core.token_admin_service import (
     transition_token_status,
 )
 
+from ..core.submission_admin_service import (
+    decrypt_submission_pii,
+    get_submission,
+    list_submissions,
+    transition_submission_status,
+)
+
 from ..db import get_db
 from ..schemas.admin import (
     ActiveModeResponse,
@@ -32,6 +39,10 @@ from ..schemas.admin import (
     TokenListResponse,
     TokenStatusRequest,
     TokenSummary,
+    AdminSubmissionDetail,
+    AdminSubmissionListResponse,
+    AdminSubmissionSummary,
+    SubmissionStatusRequest,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -217,3 +228,96 @@ async def delete_token(
         )
     await purge_token(db, token_id)
     await db.commit()
+    
+    
+    
+# submissions
+
+def _submission_to_summary(row) -> AdminSubmissionSummary:
+    return AdminSubmissionSummary(
+        id=row.id,
+        mode=row.mode,
+        outcome=row.outcome,
+        status=row.status,
+        attempt_number=row.attempt_number,
+        has_identity=row.name_encrypted is not None,
+        answer_count=len(row.answers or []),
+        created_at=row.created_at,
+    )
+
+
+@router.get("/submissions", response_model=AdminSubmissionListResponse)
+async def get_submissions(
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+    mode: Annotated[str | None, Query()] = None,
+    outcome: Annotated[str | None, Query()] = None,
+    status_filter: Annotated[list[str] | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    before_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> AdminSubmissionListResponse:
+    """List submissions. Default returns all statuses sorted by recency.
+    Cursor-paginate by passing the last seen id as ?before_id=.
+
+    PII is NOT included here — this is the inbox/metadata view.
+    Fetch /submissions/{id} for the decrypted detail."""
+    rows, next_cursor = await list_submissions(
+        db,
+        mode=mode,
+        outcome=outcome,
+        statuses=status_filter,
+        limit=limit,
+        before_id=before_id,
+    )
+    return AdminSubmissionListResponse(
+        submissions=[_submission_to_summary(r) for r in rows],
+        next_cursor=next_cursor,
+    )
+
+
+@router.get("/submissions/{submission_id}", response_model=AdminSubmissionDetail)
+async def read_submission(
+    submission_id: uuid.UUID,
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> AdminSubmissionDetail:
+    """Decrypt + return a single submission. This is the access-PII action.
+
+    Does NOT auto-transition 'pending' → 'read'. The admin UI should do that
+    explicitly via POST /submissions/{id}/status so the owner controls when
+    something is marked read (e.g. inbox preview vs. actually opening)."""
+    row = await get_submission(db, submission_id)
+    name, phone = decrypt_submission_pii(row)
+    return AdminSubmissionDetail(
+        id=row.id,
+        mode=row.mode,
+        outcome=row.outcome,
+        status=row.status,
+        attempt_number=row.attempt_number,
+        name=name,
+        phone=phone,
+        phone_hash=row.phone_hash,
+        answers=list(row.answers or []),
+        visitor_id=row.visitor_id,
+        session_id=row.session_id,
+        token_id=row.token_id,
+        created_at=row.created_at,
+    )
+
+
+@router.post(
+    "/submissions/{submission_id}/status",
+    response_model=AdminSubmissionSummary,
+)
+async def change_submission_status(
+    submission_id: uuid.UUID,
+    payload: SubmissionStatusRequest,
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> AdminSubmissionSummary:
+    """Transition a submission between pending/read/archived. No purge yet —
+    submission purge will land alongside the broader privacy story
+    (visitor right-to-be-forgotten) in a later session."""
+    row = await transition_submission_status(db, submission_id, payload.status)
+    await db.commit()
+    return _submission_to_summary(row)

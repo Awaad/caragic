@@ -1,11 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
-
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
-# Existing schemas (login, me, etc.) stay as they are.
-# Adding below:
 
 
 class CreateTokenRequest(BaseModel):
@@ -112,3 +110,45 @@ class TokenSummary(BaseModel):
 
 class TokenListResponse(BaseModel):
     tokens: list[TokenSummary]
+    
+    
+
+class AdminSubmissionSummary(BaseModel):
+    """Inbox list row — no decrypted PII. Shows attempt history and outcome
+    at a glance; full detail requires a separate fetch."""
+    id: UUID
+    mode: str
+    outcome: Literal["submitted", "declined"]
+    status: Literal["pending", "read", "archived"]
+    attempt_number: int
+    has_identity: bool  # True iff name_encrypted is not null (i.e. outcome='submitted')
+    answer_count: int
+    created_at: datetime
+
+
+class AdminSubmissionDetail(BaseModel):
+    """Decrypted detail view. Hitting this endpoint is the act that reveals
+    the visitor's identity — log accordingly if/when audit logging lands."""
+    id: UUID
+    mode: str
+    outcome: Literal["submitted", "declined"]
+    status: Literal["pending", "read", "archived"]
+    attempt_number: int
+    name: str | None
+    phone: str | None  # E.164
+    phone_hash: str | None
+    answers: list[dict]
+    visitor_id: UUID
+    session_id: UUID
+    token_id: UUID
+    created_at: datetime
+
+
+class AdminSubmissionListResponse(BaseModel):
+    submissions: list[AdminSubmissionSummary]
+    # Cursor for pagination; None when there are no more pages.
+    next_cursor: UUID | None = None
+
+
+class SubmissionStatusRequest(BaseModel):
+    status: Literal["pending", "read", "archived"]
