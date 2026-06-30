@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     secret_key: str
     master_encryption_key: str  # base64-encoded 32 bytes
     phone_hash_key: str         # base64-encoded 32 bytes — HMAC-SHA256 key for phone fingerprinting
+    admin_username: str
     admin_password_hash: str
     admin_totp_secret: str
     cors_origins: str
