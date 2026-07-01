@@ -27,6 +27,7 @@ export function useWarpProgress(): WarpProgress {
   const { phase, hasWarpedBefore, setPhase, pendingArrivalPhase, setPendingArrivalPhase } = useFlow();
   const warpStart = useRef<number | null>(null);
   const isFirstWarp = useRef(false);
+  const hasWarpedThisMount = useRef(false);
 
   const progress = useRef<WarpProgress>({
     t: 0,
@@ -38,7 +39,8 @@ export function useWarpProgress(): WarpProgress {
   useFrame((state) => {
     if (phase === 'warping' && warpStart.current === null) {
       warpStart.current = state.clock.elapsedTime;
-      isFirstWarp.current = !hasWarpedBefore;
+      isFirstWarp.current = !hasWarpedThisMount.current;
+      hasWarpedThisMount.current = true;
     }
     if (phase !== 'warping' && warpStart.current !== null) {
       warpStart.current = null;
