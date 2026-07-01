@@ -43,7 +43,7 @@ interface PersistActions {
 
   /** Wipe everything. Called after a successful submission so the next visitor
    *  on this session (if any) doesn't see stale answers. */
-  clear: () => void;
+  clearProgress: () => void;
 }
 
 const initialPersistedState: PersistedFlowState = {
@@ -70,7 +70,13 @@ export const useFlowPersistStore = create<PersistedFlowState & PersistActions>()
 
       setLastOutcome: (outcome) => set({ lastOutcome: outcome }),
 
-      clear: () => set(initialPersistedState),
+      clearProgress: () =>
+        set((s) => ({
+          ...s,
+          roundIndex: 0,
+          answers: [],
+          hasWarpedBefore: false,
+        })),
     }),
     {
       name: "caragic-flow",
