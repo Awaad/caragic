@@ -43,6 +43,7 @@ export interface ModeReveal {
 
 export interface ModeContent {
   mode: Mode;
+  session_id: string
   rounds: Round[];
   reveal: ModeReveal;
 }

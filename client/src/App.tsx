@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { FlowProvider } from "./flow/FlowContext";
 import { EntryGate } from "./components/EntryGate";
 import { useContent } from "./api/hooks";
+import { reconcileWithSession } from "./flow/persistStore";
 import { Scene } from "./scene/Scene";
 import { Overlay } from "./components/overlay/Overlay";
 import { DebugOverlay } from "./components/DebugOverlay";
@@ -17,8 +18,27 @@ function GatedFlow() {
   // EntryGate guarantees this only renders once content resolved successfully.
   if (!content) return null;
 
+  // Reconcile persisted flow state with the current session. This runs
+  // synchronously during render fine because zustand's persist middleware
+  // hydrates from localStorage at store creation, before any component mounts.
+  const reconciled = reconcileWithSession(content.session_id);
+
+  const resumeRound = content.rounds[reconciled.roundIndex];
+  const initialPhase = reconciled.resume
+    ? resumeRound?.type === "capture"
+      ? "capturing"
+      : "round"
+    : "opening";
+
   return (
-    <FlowProvider initialMode={content.mode}>
+    <FlowProvider
+      initialMode={content.mode}
+      resume={reconciled.resume}
+      initialPhase={initialPhase}
+      initialRoundIndex={reconciled.roundIndex}
+      initialAnswers={reconciled.answers}
+      initialHasWarpedBefore={reconciled.hasWarpedBefore}
+    >
       <div style={backgroundStyle}>
         <Scene />
         <Overlay />

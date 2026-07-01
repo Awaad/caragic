@@ -1,23 +1,34 @@
-import { createContext, useCallback, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import type { Mode } from '../modes/types';
-import type {
-  FlowContextValue,
-  FlowState,
-  Phase,
-} from './types';
-
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
+import type { Mode } from "../modes/types";
+import type { Answer, FlowContextValue, FlowState, Phase } from "./types";
+import { useFlowPersistStore } from "./persistStore";
 
 export const FlowContext = createContext<FlowContextValue | null>(null);
 
 interface FlowProviderProps {
   children: ReactNode;
   initialMode?: Mode;
+
+  /** Set by App.tsx after reconciling with /api/content's session_id.
+   *  If `resume`, we skip the opener and drop the visitor at the start of
+   *  `initialRoundIndex` with the companion already present. */
+  resume?: boolean;
+  initialPhase?: Phase;
+  initialRoundIndex?: number;
+  initialAnswers?: Answer[];
+  initialHasWarpedBefore?: boolean;
 }
 
-const initialState: FlowState = {
-  mode: 'dating',
-  phase: 'opening',
+const baseInitialState: FlowState = {
+  mode: "dating",
+  phase: "opening",
   roundIndex: 0,
   energy: 0,
   answers: [],
@@ -26,16 +37,40 @@ const initialState: FlowState = {
   roundStarted: false,
   coreInPosition: false,
   pendingArrivalPhase: null,
+  resume: false,
 };
 
 export function FlowProvider({
   children,
-  initialMode = 'dating',
+  initialMode = "dating",
+  resume = false,
+  initialPhase,
+  initialRoundIndex = 0,
+  initialAnswers = [],
+  initialHasWarpedBefore = false,
 }: FlowProviderProps) {
-  const [state, setState] = useState<FlowState>({
-    ...initialState,
+  const [state, setState] = useState<FlowState>(() => ({
+    ...baseInitialState,
     mode: initialMode,
-  });
+    // When resuming, drop straight into 'round' with the round un-started.
+    // The visitor sees the companion + idle core; tapping the core starts the round.
+    phase: resume ? (initialPhase ?? "round") : "opening",
+    roundIndex: resume ? initialRoundIndex : 0,
+    answers: resume ? initialAnswers : [],
+    hasWarpedBefore: resume ? initialHasWarpedBefore : false,
+    resume,
+  }));
+
+  // --- Sync progress to persisted store on changes ---
+  // Only the fields we want to survive a reload. selectedOptionId, roundStarted,
+  // coreInPosition, pendingArrivalPhase, phase, energy are all ephemeral.
+  useEffect(() => {
+    useFlowPersistStore.getState().syncProgress({
+      roundIndex: state.roundIndex,
+      answers: state.answers,
+      hasWarpedBefore: state.hasWarpedBefore,
+    });
+  }, [state.roundIndex, state.answers, state.hasWarpedBefore]);
 
   const setPhase = useCallback((phase: Phase) => {
     setState((s) => ({ ...s, phase }));
@@ -54,7 +89,12 @@ export function FlowProvider({
   }, []);
 
   const advanceRound = useCallback(() => {
-    setState((s) => ({ ...s, roundIndex: s.roundIndex + 1, roundStarted: false, selectedOptionId: null  }));
+    setState((s) => ({
+      ...s,
+      roundIndex: s.roundIndex + 1,
+      roundStarted: false,
+      selectedOptionId: null,
+    }));
   }, []);
 
   const recordAnswer = useCallback((roundId: string, optionId: string) => {
@@ -81,14 +121,15 @@ export function FlowProvider({
   }, []);
 
   const setPendingArrivalPhase = useCallback(
-    (phase: FlowState['pendingArrivalPhase']) => {
+    (phase: FlowState["pendingArrivalPhase"]) => {
       setState((s) => ({ ...s, pendingArrivalPhase: phase }));
     },
     [],
   );
 
   const reset = useCallback(() => {
-    setState({ ...initialState, mode: state.mode });
+    setState({ ...baseInitialState, mode: state.mode });
+    useFlowPersistStore.getState().clear();
   }, [state.mode]);
 
   const value = useMemo<FlowContextValue>(
