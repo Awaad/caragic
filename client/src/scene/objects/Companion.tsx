@@ -192,8 +192,16 @@ export function Companion() {
     const core = coreRef.current;
     if (!group || !core) return;
 
-    group.visible = shouldBeVisible;
-    if (!shouldBeVisible) return;
+    //group.visible = shouldBeVisible;
+    if (!shouldBeVisible) {
+      // Force-clean the core so nothing lingers into the next round's mount
+      core.visible = false;
+      core.scale.setScalar(0);
+      if (exitFlashLightRef.current) {
+        exitFlashLightRef.current.intensity = 0;
+      }
+      return;
+    }
 
     let opacity = 1;
     if (warp.active && warp.isFirstWarp) {
@@ -384,7 +392,7 @@ export function Companion() {
       core.visible = false;
     }
 
-    // --- Shards: pure ambient orbit ---
+    // Shards: pure ambient orbit
     const time = state.clock.elapsedTime;
 
     for (let i = 0; i < configs.length; i++) {
@@ -439,7 +447,7 @@ export function Companion() {
   });
 
   return (
-    <group ref={groupRef} visible={false}>
+    <group ref={groupRef} visible={shouldBeVisible}>
       {/* Core — visual element with its own click handler */}
       <Icosahedron
         ref={coreRef}
@@ -447,7 +455,7 @@ export function Companion() {
         onClick={(e) => {
           e.stopPropagation();
           if (coreState !== "idle" || roundStarted) return;
-          console.log("CORE CLICKED", { phase, roundStarted, coreState });
+
           if (phase === "round" && !roundStarted && coreState === "idle") {
             startRound();
             setCoreState("exiting");

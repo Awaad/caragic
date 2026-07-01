@@ -1,13 +1,7 @@
-import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import {
-  Euler,
-  type InstancedMesh,
-  Matrix4,
-  Quaternion,
-  Vector3,
-} from 'three';
-import { useFlow } from '../../flow/useFlow';
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Euler, type InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
+import { useFlow } from "../../flow/useFlow";
 
 const FRAGMENT_COUNT = 12;
 const FLY_DURATION = 1.0;
@@ -69,20 +63,24 @@ export function Fragments() {
     const mesh = instancedRef.current;
     if (!mesh) return;
 
-    if (phase === 'shattering' && shatterStart.current === null) {
+    if (phase === "shattering" && shatterStart.current === null) {
       shatterStart.current = frameState.clock.elapsedTime;
       for (const f of state.fragments) {
         f.position.set(0, 0, 0);
         f.rotation.identity();
       }
     }
-    if (phase !== 'shattering' && phase !== 'warping' && shatterStart.current !== null) {
-        shatterStart.current = null;
+    if (
+      phase !== "shattering" &&
+      phase !== "warping" &&
+      shatterStart.current !== null
+    ) {
+      shatterStart.current = null;
     }
 
-    const isActive = phase === 'shattering' || phase === 'warping';
-    mesh.visible = isActive;
-    if (!isActive || shatterStart.current === null) return;
+    const inActivePhase = phase === "shattering" || phase === "warping";
+    mesh.visible = inActivePhase && shatterStart.current !== null;
+    if (!inActivePhase || shatterStart.current === null) return;
 
     const elapsed = frameState.clock.elapsedTime - shatterStart.current;
 
@@ -101,26 +99,31 @@ export function Fragments() {
       f.position.copy(f.velocity).multiplyScalar(easedT);
 
       const angSpeed = 1 - easedT * 0.7;
-      state.tempEulerAxis.copy(f.angularVelocity).multiplyScalar(delta * angSpeed);
+      state.tempEulerAxis
+        .copy(f.angularVelocity)
+        .multiplyScalar(delta * angSpeed);
       state.tempEuler.set(
         state.tempEulerAxis.x,
         state.tempEulerAxis.y,
         state.tempEulerAxis.z,
-        'XYZ',
+        "XYZ",
       );
       state.tempQuat.setFromEuler(state.tempEuler);
       f.rotation.multiply(state.tempQuat);
 
       let fadeOut: number;
-        if (preBurst) {
-        fadeOut = 0;  // invisible before burst
-        } else if (phase === 'shattering') {
+      if (preBurst) {
+        fadeOut = 0; // invisible before burst
+      } else if (phase === "shattering") {
         fadeOut = 1;
-        } else {
-        const warpProgress = Math.min(1, (frameState.clock.elapsedTime - shatterStart.current - 1.0) / 0.7);
+      } else {
+        const warpProgress = Math.min(
+          1,
+          (frameState.clock.elapsedTime - shatterStart.current - 1.0) / 0.7,
+        );
         fadeOut = 1 - warpProgress;
-        }
-        
+      }
+
       state.tempScale.setScalar(f.scale * fadeOut);
 
       state.tempMatrix.compose(f.position, f.rotation, state.tempScale);

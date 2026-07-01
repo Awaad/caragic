@@ -1,12 +1,17 @@
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { MeshTransmissionMaterial, Icosahedron } from '@react-three/drei';
-import { MathUtils, type Group, type Mesh, type MeshStandardMaterial, Vector3 } from 'three';
-import type { OpeningObjectProps } from '../../types';
-import { useCrackingInput } from '../../flow/useCrackingInput';
-import { useFlow } from '../../flow/useFlow';
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import { MeshTransmissionMaterial, Icosahedron } from "@react-three/drei";
+import {
+  MathUtils,
+  type Group,
+  type Mesh,
+  type MeshStandardMaterial,
+  Vector3,
+} from "three";
+import type { OpeningObjectProps } from "../../types";
+import { useCrackingInput } from "../../flow/useCrackingInput";
+import { useFlow } from "../../flow/useFlow";
 //import { CrackOverlay } from '../shaders/crack/CrackOverlay';
-
 
 const SHATTER_DURATION = 1.0;
 const SHAKE_DURATION = 0.15;
@@ -50,43 +55,46 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
 
     // Decay shake timer
     if (shakeTimeRemaining.current > 0) {
-      shakeTimeRemaining.current = Math.max(0, shakeTimeRemaining.current - delta);
+      shakeTimeRemaining.current = Math.max(
+        0,
+        shakeTimeRemaining.current - delta,
+      );
     }
     const shakeT = shakeTimeRemaining.current / SHAKE_DURATION;
     const shakeMul = shakeT * shakeT;
 
     // Shatter phase setup/teardown
-    if (phase === 'shattering' && shatterStart.current === null) {
+    if (phase === "shattering" && shatterStart.current === null) {
       shatterStart.current = state.clock.elapsedTime;
     }
-    if (phase !== 'shattering' && shatterStart.current !== null) {
+    if (phase !== "shattering" && shatterStart.current !== null) {
       shatterStart.current = null;
     }
 
     // shatter block
-    if (phase === 'shattering' && shatterStart.current !== null) {
-    const elapsed = state.clock.elapsedTime - shatterStart.current;
+    if (phase === "shattering" && shatterStart.current !== null) {
+      const elapsed = state.clock.elapsedTime - shatterStart.current;
 
-    // Pre-burst: gem rapidly inflates (impact frame)
-    if (elapsed < 0.15) {
-      const localT = elapsed / 0.15;
-      // Aggressive inflate — gem looks like it's about to pop
-      group.scale.setScalar(1 + localT * 0.6);
-      group.visible = true;
-    } else {
-      // Post-burst: hard cut to invisible. Gem is GONE.
-      group.visible = false;
+      // Pre-burst: gem rapidly inflates (impact frame)
+      if (elapsed < 0.15) {
+        const localT = elapsed / 0.15;
+        // Aggressive inflate — gem looks like it's about to pop
+        group.scale.setScalar(1 + localT * 0.6);
+        group.visible = true;
+      } else {
+        // Post-burst: hard cut to invisible. Gem is GONE.
+        group.visible = false;
+      }
+
+      if (elapsed >= SHATTER_DURATION) {
+        setPhase("warping");
+      }
+      return;
     }
 
-    if (elapsed >= SHATTER_DURATION) {
-      setPhase('warping');
-    }
-    return;
-  }
+    // Normal animation below this line
 
-    // --- Normal animation below this line ---
-
-    group.visible = phase === 'opening' || phase === 'cracking';
+    group.visible = phase === "opening" || phase === "cracking";
 
     const tiltMagnitude = Math.min(1, (Math.abs(tiltX) + Math.abs(tiltY)) / 30);
     const idleSpeed = 0.25 * (1 - tiltMagnitude);
@@ -116,7 +124,9 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
 
     // Group scale: gem grows with energy + tap kick; cracks scale with it
     const targetGroupScale = 1 + energy * 0.08 + tapPulseRef.current * 0.12;
-    group.scale.setScalar(MathUtils.lerp(group.scale.x, targetGroupScale, 0.25));
+    group.scale.setScalar(
+      MathUtils.lerp(group.scale.x, targetGroupScale, 0.25),
+    );
 
     // Outer mesh holds its own size (group provides scale)
     outer.scale.setScalar(1);
@@ -143,16 +153,15 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
   });
 
   return (
-    <group ref={groupRef} onClick={
-        phase === 'opening' || phase === 'cracking'
-          ? handleTap
-          : undefined
+    <group
+      ref={groupRef}
+      onClick={
+        phase === "opening" || phase === "cracking" ? handleTap : undefined
       }
       raycast={
-        phase === 'opening' || phase === 'cracking'
-          ? undefined
-          : () => null
-      }>
+        phase === "opening" || phase === "cracking" ? undefined : () => null
+      }
+    >
       <Icosahedron ref={outerRef} args={[1, 0]}>
         {/* @ts-expect-error — drei MeshTransmissionMaterial loose JSX types */}
         <MeshTransmissionMaterial
@@ -168,7 +177,6 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
           attenuationColor="#2855aa"
         />
       </Icosahedron>
-
 
       <Icosahedron ref={innerRef} args={[0.4, 0]}>
         <meshStandardMaterial
