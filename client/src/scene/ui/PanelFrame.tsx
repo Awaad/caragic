@@ -280,16 +280,9 @@ export function PanelFrame({
     if (visible && !wasVisible.current) {
       visibilityChangedAt.current = t;
       wasVisible.current = true;
-      console.log("FRAME visible:true, variant:", variant, "at", t);
     } else if (!visible && wasVisible.current) {
       visibilityChangedAt.current = t;
       wasVisible.current = false;
-      console.log(
-        "FRAME visible:false (collapse start), variant:",
-        variant,
-        "at",
-        t,
-      );
     }
 
     // 2. Compute scale based on visibility curve (emergence or collapse)
