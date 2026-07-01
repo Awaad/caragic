@@ -2,8 +2,11 @@ import { useState } from "react";
 import { Html } from "@react-three/drei";
 import { useFlow } from "../../flow/useFlow";
 import { useContent } from "../../api/hooks";
+import { useSubmitCapture } from "../../api/mutations";
 import { PanelFrame } from "./PanelFrame";
 import { TypewriterText } from "./TypewriterText";
+import { CaragicPhoneInput } from "../../components/PhoneInput";
+import { isValidPhoneNumber } from "libphonenumber-js";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
 import type { Mode } from "../../modes/types";
 
@@ -26,14 +29,13 @@ const HEADER_WIDTH = 2.4;
 const HEADER_HEIGHT = 0.55;
 const BUTTON_WIDTH = 2.0;
 const BUTTON_HEIGHT = 0.42;
-const FORM_WIDTH = 2.0;
-const FORM_HEIGHT = 0.85;
 const HEADER_Y = 0.85;
 
 export function CaptureFormPanel() {
-  const { phase, mode, roundIndex, setPhase } = useFlow();
+  const { phase, mode, roundIndex, answers, setPhase } = useFlow();
   const responsiveScale = useResponsiveScale();
   const { data: content } = useContent();
+  const submit = useSubmitCapture();
 
   const [step, setStep] = useState<"choice" | "form" | "declined">("choice");
   const [name, setName] = useState("");
@@ -49,10 +51,44 @@ export function CaptureFormPanel() {
 
   const { primary: accent, secondary } = getAccentColors(mode);
 
+  // Both required, phone must parse as valid E.164 (client-side check;
+  // server re-validates as authoritative)
+  const phoneValid = phoneNumber ? isValidPhoneNumber(phoneNumber) : false;
+  const canSubmit = name.trim().length > 0 && phoneValid && !submit.isPending;
+
   const handleSubmit = () => {
-    if (!name.trim() || !phoneNumber.trim()) return;
-    console.log("Capture submission:", { name, phoneNumber, mode });
-    setPhase("reveal");
+    if (!canSubmit) return;
+    submit.mutate(
+      {
+        outcome: "submitted",
+        name: name.trim(),
+        phone: phoneNumber,
+        answers: answers.map((a) => ({
+          round_id: a.roundId,
+          option_id: a.optionId,
+        })),
+      },
+      {
+        onSuccess: () => {
+          setPhase("reveal");
+        },
+        // onError: leave user on the form; error UI is inline below
+      },
+    );
+  };
+
+  const handleDecline = () => {
+    // Fire-and-forget — don't await, don't block the UI on the request.
+    // The server logs the decline for the admin funnel; visitor sees the
+    // goodbye message immediately.
+    submit.mutate({
+      outcome: "declined",
+      answers: answers.map((a) => ({
+        round_id: a.roundId,
+        option_id: a.optionId,
+      })),
+    });
+    setStep("declined");
   };
 
   return (
@@ -85,7 +121,7 @@ export function CaptureFormPanel() {
             accentColor={accent}
             accentColorSecondary={secondary}
             variant="choice"
-            onClick={() => setStep("declined")}
+            onClick={handleDecline}
           />
           <PanelFrame
             width={BUTTON_WIDTH}
@@ -139,27 +175,38 @@ export function CaptureFormPanel() {
                 style={inputStyle(accent)}
                 autoComplete="given-name"
               />
-              <input
-                type="tel"
-                placeholder="your number"
+              <CaragicPhoneInput
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                style={inputStyle(accent)}
-                autoComplete="tel"
+                onChange={setPhoneNumber}
+                accent={accent}
+                disabled={submit.isPending}
               />
+
+              {/* Error surface — only shows after a failed attempt */}
+              {submit.isError && (
+                <div
+                  style={{
+                    color: "#ff6688",
+                    fontSize: 12,
+                    fontFamily: "monospace",
+                    padding: "4px 2px",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  {submit.error?.message ?? "something broke. try again."}
+                </div>
+              )}
+
               <button
                 onClick={handleSubmit}
-                disabled={!name.trim() || !phoneNumber.trim()}
+                disabled={!canSubmit}
                 style={{
                   ...submitButtonStyle(accent),
-                  opacity: name.trim() && phoneNumber.trim() ? 1 : 0.4,
-                  cursor:
-                    name.trim() && phoneNumber.trim()
-                      ? "pointer"
-                      : "not-allowed",
+                  opacity: canSubmit ? 1 : 0.4,
+                  cursor: canSubmit ? "pointer" : "not-allowed",
                 }}
               >
-                send
+                {submit.isPending ? "sending..." : "send"}
               </button>
             </div>
           </Html>
