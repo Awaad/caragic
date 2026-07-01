@@ -6,6 +6,7 @@ import { reconcileWithSession } from "./flow/persistStore";
 import { Scene } from "./scene/Scene";
 import { Overlay } from "./components/overlay/Overlay";
 import { DebugOverlay } from "./components/DebugOverlay";
+import type { Phase } from "./flow/types";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,6 +16,7 @@ const queryClient = new QueryClient({
 
 function GatedFlow() {
   const { data: content } = useContent();
+  
   // EntryGate guarantees this only renders once content resolved successfully.
   if (!content) return null;
 
@@ -24,11 +26,18 @@ function GatedFlow() {
   const reconciled = reconcileWithSession(content.session_id);
 
   const resumeRound = content.rounds[reconciled.roundIndex];
-  const initialPhase = reconciled.resume
-    ? resumeRound?.type === "capture"
-      ? "capturing"
-      : "round"
-    : "opening";
+  let initialPhase: Phase = "opening";
+  if (reconciled.resume) {
+    if (reconciled.lastOutcome === "submitted") {
+      initialPhase = "reveal";
+    } else if (reconciled.lastOutcome === "declined") {
+      // Land on the capture form — CaptureForm3D handles showing 'choice'
+      // step so the visitor gets another shot.
+      initialPhase = "capturing";
+    } else {
+      initialPhase = resumeRound?.type === "capture" ? "capturing" : "round";
+    }
+  }
 
   return (
     <FlowProvider
@@ -38,6 +47,7 @@ function GatedFlow() {
       initialRoundIndex={reconciled.roundIndex}
       initialAnswers={reconciled.answers}
       initialHasWarpedBefore={reconciled.hasWarpedBefore}
+      initialLastOutcome={reconciled.lastOutcome}
     >
       <div style={backgroundStyle}>
         <Scene />

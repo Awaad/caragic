@@ -213,7 +213,9 @@ export function Companion() {
     group.rotation.y += delta * 0.08;
 
     // --- Core state machine ---
-    if (coreState === "idle") {
+    if (phase === "capturing" || phase === "reveal") {
+      core.visible = false;
+    } else if (coreState === "idle") {
       core.visible = true;
 
       const isInteractive = phase === "round" && !roundStarted;

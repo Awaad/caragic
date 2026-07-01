@@ -32,12 +32,13 @@ const BUTTON_HEIGHT = 0.42;
 const HEADER_Y = 0.85;
 
 export function CaptureFormPanel() {
-  const { phase, mode, roundIndex, answers, setPhase } = useFlow();
+  const { phase, mode, roundIndex, answers, setPhase} = useFlow();
   const responsiveScale = useResponsiveScale();
   const { data: content } = useContent();
   const submit = useSubmitCapture();
 
   const [step, setStep] = useState<"choice" | "form" | "declined">("choice");
+
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
 

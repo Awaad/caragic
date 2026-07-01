@@ -22,6 +22,7 @@ export interface FlowState {
   coreInPosition: boolean;
   pendingArrivalPhase: Phase | null;
   resume: boolean;
+  lastOutcome: "submitted" | "declined" | null;
 }
 
 export interface FlowActions {

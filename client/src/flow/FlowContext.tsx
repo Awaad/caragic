@@ -24,6 +24,7 @@ interface FlowProviderProps {
   initialRoundIndex?: number;
   initialAnswers?: Answer[];
   initialHasWarpedBefore?: boolean;
+  initialLastOutcome?: "submitted" | "declined" | null;
 }
 
 const baseInitialState: FlowState = {
@@ -38,6 +39,7 @@ const baseInitialState: FlowState = {
   coreInPosition: false,
   pendingArrivalPhase: null,
   resume: false,
+  lastOutcome: null,
 };
 
 export function FlowProvider({
@@ -48,6 +50,7 @@ export function FlowProvider({
   initialRoundIndex = 0,
   initialAnswers = [],
   initialHasWarpedBefore = false,
+  initialLastOutcome = null,
 }: FlowProviderProps) {
   const [state, setState] = useState<FlowState>(() => ({
     ...baseInitialState,
@@ -58,6 +61,7 @@ export function FlowProvider({
     roundIndex: resume ? initialRoundIndex : 0,
     answers: resume ? initialAnswers : [],
     hasWarpedBefore: resume ? initialHasWarpedBefore : false,
+    lastOutcome: resume ? initialLastOutcome : null,
     resume,
   }));
 
@@ -129,7 +133,7 @@ export function FlowProvider({
 
   const reset = useCallback(() => {
     setState({ ...baseInitialState, mode: state.mode });
-    useFlowPersistStore.getState().clear();
+    useFlowPersistStore.getState().clearProgress();
   }, [state.mode]);
 
   const value = useMemo<FlowContextValue>(

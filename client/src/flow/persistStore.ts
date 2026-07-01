@@ -108,18 +108,31 @@ export function reconcileWithSession(currentSessionId: string): {
   roundIndex: number;
   answers: Answer[];
   hasWarpedBefore: boolean;
+  lastOutcome: "submitted" | "declined" | null;
 } {
   const store = useFlowPersistStore.getState();
 
   // No match → wipe and start fresh
   if (store.session_id !== currentSessionId) {
     store.initSession(currentSessionId);
-    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false };
+    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false, lastOutcome: null, };
+  }
+
+  // Terminal state: they already finished this session (submitted or declined).
+  // Resume at the terminal phase, not the opener.
+  if (store.lastOutcome !== null) {
+    return {
+      resume: true,
+      roundIndex: store.roundIndex,
+      answers: store.answers,
+      hasWarpedBefore: true,
+      lastOutcome: store.lastOutcome,
+    };
   }
 
   // Match but no progress → not really a "resume", just continue
   if (store.roundIndex === 0 && store.answers.length === 0) {
-    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false };
+    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false, lastOutcome: null, };
   }
 
   // Genuine resume
@@ -128,5 +141,6 @@ export function reconcileWithSession(currentSessionId: string): {
     roundIndex: store.roundIndex,
     answers: store.answers,
     hasWarpedBefore: store.hasWarpedBefore,
+    lastOutcome: null,
   };
 }

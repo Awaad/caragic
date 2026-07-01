@@ -43,7 +43,7 @@ export function useSubmitCapture() {
       store.setLastOutcome(data.outcome);
       // Clear progress but leave lastOutcome intact for follow-up UI.
       // We do this by preserving lastOutcome + session_id and resetting the rest.
-      store.clearProgress();
+      //store.clearProgress();
     },
   });
 }
