@@ -10,26 +10,27 @@ from .crypto import encrypt_field, hash_phone
 from .phone import PhoneValidationError, parse_and_normalize
 
 
-async def _choice_round_slugs(db: AsyncSession, mode_name: str) -> set[str]:
-    """Slugs of every choice-type round in the mode, in any order."""
+async def _load_choice_rounds(
+    db: AsyncSession, mode_name: str
+) -> dict[str, Round]:
+    """Return {slug: Round} for every choice-type round in the mode.
+    Raises 500 if the mode itself is missing (should be impossible — FK guards it)."""
     mode = (
         await db.execute(select(Mode).where(Mode.name == mode_name))
     ).scalar_one_or_none()
     if mode is None:
-        # Token references a mode that vanished. Same shape as content endpoint.
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"mode missing: {mode_name}",
         )
-
-    rows = (
+    rounds = (
         await db.execute(
-            select(Round.slug).where(
+            select(Round).where(
                 Round.mode_id == mode.id, Round.round_type == "choice"
             )
         )
     ).scalars().all()
-    return set(rows)
+    return {r.slug: r for r in rounds}
 
 
 def _validate_answers_complete(
@@ -61,6 +62,75 @@ def _validate_answers_complete(
         )
 
 
+def _resolve_and_stamp(
+    answers: list, rounds_by_slug: dict[str, Round]
+) -> list[dict]:
+    """Turn wire-format {round_id, option_id} into the snapshot shape stored
+    on the row: {round_id, option_id, question, option_label, reveal_text}.
+
+    This is where history stops being retroactive — once written, the answer
+    survives any edit to the mode's content.
+
+    Raises 422 if option_id doesn't exist in the round's data.options."""
+    stamped: list[dict] = []
+    for a in answers:
+        round_row = rounds_by_slug[a.round_id]  # existence already validated
+        options = round_row.data.get("options", [])
+        question = round_row.data.get("question")
+
+        matching = next((o for o in options if o.get("id") == a.option_id), None)
+        if matching is None:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"unknown option_id {a.option_id!r} for round {a.round_id!r}"
+                ),
+            )
+
+        stamped.append(
+            {
+                "round_id": a.round_id,
+                "option_id": a.option_id,
+                "question": question,
+                "option_label": matching.get("label"),
+                "reveal_text": matching.get("revealText"),
+            }
+        )
+    return stamped
+
+
+def _stamp_partial(answers: list, rounds_by_slug: dict[str, Round]) -> list[dict]:
+    """Same as _resolve_and_stamp but permissive: unknown slugs/options land
+    with null snapshots instead of 422. Used for declined outcomes where
+    the visitor may have bailed mid-flow with partial or malformed answers."""
+    stamped: list[dict] = []
+    for a in answers:
+        round_row = rounds_by_slug.get(a.round_id)
+        if round_row is None:
+            stamped.append(
+                {
+                    "round_id": a.round_id,
+                    "option_id": a.option_id,
+                    "question": None,
+                    "option_label": None,
+                    "reveal_text": None,
+                }
+            )
+            continue
+        options = round_row.data.get("options", [])
+        matching = next((o for o in options if o.get("id") == a.option_id), None)
+        stamped.append(
+            {
+                "round_id": a.round_id,
+                "option_id": a.option_id,
+                "question": round_row.data.get("question"),
+                "option_label": matching.get("label") if matching else None,
+                "reveal_text": matching.get("revealText") if matching else None,
+            }
+        )
+    return stamped
+
+
 async def _next_attempt_number(db: AsyncSession, session_id) -> int:
     existing = (
         await db.execute(
@@ -80,9 +150,11 @@ async def create_submission(
     session: VisitorSessionToken,
     token: Token,
 ) -> Submission:
-    """Validate, encrypt, persist. Returns the saved row.
-
+    """Validate, resolve+stamp, encrypt, persist. Returns the saved row.
     Caller commits the transaction."""
+
+    rounds_by_slug = await _load_choice_rounds(db, token.mode)
+    expected = set(rounds_by_slug.keys())
 
     if payload.outcome == "submitted":
         if not payload.name:
@@ -95,15 +167,17 @@ async def create_submission(
         except PhoneValidationError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
-        expected = await _choice_round_slugs(db, token.mode)
         _validate_answers_complete(payload.answers, expected)
+        stamped_answers = _resolve_and_stamp(payload.answers, rounds_by_slug)
 
         name_ct: bytes | None = encrypt_field(payload.name)
         phone_ct: bytes | None = encrypt_field(e164)
         phone_fp: str | None = hash_phone(e164)
     else:
-        # Declined  name/phone are dropped on the floor even if the client sent them.
-        # The CHECK constraint enforces NULLs and we want to honor that intent server-side.
+        # Declined — identity dropped on the floor, answers kept as-is
+        # (permissive stamp: unknown slugs get null snapshots rather than
+        # rejecting a decline for having malformed data).
+        stamped_answers = _stamp_partial(payload.answers, rounds_by_slug)
         name_ct = None
         phone_ct = None
         phone_fp = None
@@ -120,8 +194,7 @@ async def create_submission(
         name_encrypted=name_ct,
         phone_encrypted=phone_ct,
         phone_hash=phone_fp,
-        answers=[a.model_dump() for a in payload.answers],
-        # status defaults to 'pending' server-side
+        answers=stamped_answers,
     )
     db.add(row)
     await db.flush()

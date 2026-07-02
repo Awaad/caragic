@@ -124,6 +124,15 @@ class AdminSubmissionSummary(BaseModel):
     has_identity: bool  # True iff name_encrypted is not null (i.e. outcome='submitted')
     answer_count: int
     created_at: datetime
+    
+class AdminSubmissionAnswer(BaseModel):
+    """Answer as stored on the submission row. All fields are historical
+    snapshots — safe to render even if mode content has since changed."""
+    round_id: str
+    option_id: str
+    question: str | None = None       # None only for pre-snapshot legacy rows
+    option_label: str | None = None
+    reveal_text: str | None = None
 
 
 class AdminSubmissionDetail(BaseModel):
@@ -137,7 +146,7 @@ class AdminSubmissionDetail(BaseModel):
     name: str | None
     phone: str | None  # E.164
     phone_hash: str | None
-    answers: list[dict]
+    answers: list[AdminSubmissionAnswer] 
     visitor_id: UUID
     session_id: UUID
     token_id: UUID
