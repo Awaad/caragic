@@ -152,3 +152,8 @@ class AdminSubmissionListResponse(BaseModel):
 
 class SubmissionStatusRequest(BaseModel):
     status: Literal["pending", "read", "archived"]
+    
+    
+    
+class WhoAmIResponse(BaseModel):
+    username: str

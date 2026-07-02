@@ -43,6 +43,7 @@ from ..schemas.admin import (
     AdminSubmissionListResponse,
     AdminSubmissionSummary,
     SubmissionStatusRequest,
+    WhoAmIResponse,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -169,6 +170,13 @@ async def delete_mode(
         )
     await purge_mode(db, name)
     await db.commit()
+    
+    
+@router.get("/whoami", response_model=WhoAmIResponse)
+async def whoami(owner: dict = Depends(get_current_owner)) -> WhoAmIResponse:
+    """Cheap auth probe. 200 with username if the admin cookie is valid,
+    401 otherwise. Called by the admin SPA on mount to drive the auth guard."""
+    return WhoAmIResponse(username=owner["sub"])
 
 
 # tokens lifecycle
