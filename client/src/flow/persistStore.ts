@@ -41,6 +41,8 @@ interface PersistActions {
   /** Mark how the most recent flow ended. Used to drive "try again?" UI later. */
   setLastOutcome: (outcome: "submitted" | "declined" | null) => void;
 
+  clear: () => void;
+
   /** Wipe everything. Called after a successful submission so the next visitor
    *  on this session (if any) doesn't see stale answers. */
   clearProgress: () => void;
@@ -69,6 +71,8 @@ export const useFlowPersistStore = create<PersistedFlowState & PersistActions>()
         set({ roundIndex, answers, hasWarpedBefore }),
 
       setLastOutcome: (outcome) => set({ lastOutcome: outcome }),
+      
+      clear: () => set(initialPersistedState),
 
       clearProgress: () =>
         set((s) => ({

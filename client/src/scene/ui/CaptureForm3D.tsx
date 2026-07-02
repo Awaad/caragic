@@ -9,6 +9,8 @@ import { CaragicPhoneInput } from "../../components/PhoneInput";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
 import type { Mode } from "../../modes/types";
+import { useFlowPersistStore } from "../../flow/persistStore";
+
 
 function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
@@ -30,14 +32,20 @@ const HEADER_HEIGHT = 0.55;
 const BUTTON_WIDTH = 2.0;
 const BUTTON_HEIGHT = 0.42;
 const HEADER_Y = 0.85;
+const RECONSIDER_HEADER_TEXT = "changed your mind?";
+const RECONSIDER_SUB_TEXT = "I saved a spot for you.";
 
 export function CaptureFormPanel() {
-  const { phase, mode, roundIndex, answers, setPhase} = useFlow();
+  const { phase, mode, roundIndex, answers, setPhase, lastOutcome} = useFlow();
   const responsiveScale = useResponsiveScale();
   const { data: content } = useContent();
   const submit = useSubmitCapture();
 
-  const [step, setStep] = useState<"choice" | "form" | "declined">("choice");
+  // instead of the standard choice. Distinct copy makes the second visit
+  // feel deliberate, not like the visitor is looping through the same UI.
+  const [step, setStep] = useState<"choice" | "reconsider" | "form" | "declined">(
+    lastOutcome === "declined" ? "reconsider" : "choice"
+  );
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -92,13 +100,18 @@ export function CaptureFormPanel() {
     setStep("declined");
   };
 
+  const handleEraseData = () => {  
+    useFlowPersistStore.getState().clear();
+    setPhase("opening");
+  };
+
   return (
     <group scale={responsiveScale}>
       {/* Header */}
       <PanelFrame
         width={HEADER_WIDTH}
         height={HEADER_HEIGHT}
-        text={step === "declined" ? declineMessage : prompt}
+        text={step === "declined" ? declineMessage : step === "reconsider" ? RECONSIDER_HEADER_TEXT : prompt}
         textSize={0.085}
         position={[0, HEADER_Y, 1.2]}
         rotation={[-0.08, 0.18, 0]}
@@ -109,6 +122,49 @@ export function CaptureFormPanel() {
       />
 
       {/* Choice step — accept or decline */}
+      {step === "reconsider" && (
+        <>
+          <PanelFrame
+            width={BUTTON_WIDTH}
+            height={BUTTON_HEIGHT}
+            text={RECONSIDER_SUB_TEXT}
+            textSize={0.065}
+            position={[0, 0.35, 1.2]}
+            rotation={[-0.08, 0.22, 0]}
+            visible
+            accentColor={accent}
+            accentColorSecondary={secondary}
+            variant="choice"
+          />
+          <PanelFrame
+            width={BUTTON_WIDTH}
+            height={BUTTON_HEIGHT}
+            text={acceptLabel}
+            textSize={0.07}
+            position={[0, -0.15, 1.2]}
+            rotation={[-0.08, 0.22, 0]}
+            visible
+            accentColor={accent}
+            accentColorSecondary={secondary}
+            variant="choice"
+            selected
+            onClick={() => setStep("form")}
+          />
+          <PanelFrame
+            width={BUTTON_WIDTH}
+            height={BUTTON_HEIGHT}
+            text="erase my data"
+            textSize={0.055}
+            position={[0, -0.65, 1.2]}
+            rotation={[-0.08, 0.22, 0]}
+            visible
+            accentColor={accent}
+            accentColorSecondary={secondary}
+            variant="choice"
+            onClick={handleEraseData}
+          />
+        </>
+      )}
       {step === "choice" && (
         <>
           <PanelFrame
