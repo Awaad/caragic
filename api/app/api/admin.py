@@ -1,5 +1,6 @@
 from __future__ import annotations
 import uuid
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
@@ -7,6 +8,7 @@ from typing import Annotated
 from ..config import get_settings
 from ..core.owner_auth import get_current_owner
 from ..core.token_service import mint_token, set_active_mode
+from ..core.erasure_service import finalize_erasure_by_admin
 from ..core.mode_service import (
     create_mode,
     list_modes,
@@ -44,6 +46,7 @@ from ..schemas.admin import (
     AdminSubmissionSummary,
     SubmissionStatusRequest,
     WhoAmIResponse,
+    EraseSubmissionResponse,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -329,3 +332,35 @@ async def change_submission_status(
     row = await transition_submission_status(db, submission_id, payload.status)
     await db.commit()
     return _submission_to_summary(row)
+
+
+@router.post(
+    "/submissions/{submission_id}/erase",
+    response_model=EraseSubmissionResponse,
+)
+async def erase_submission(
+    submission_id: uuid.UUID,
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> EraseSubmissionResponse:
+    """Admin finalizes an erasure. Works both for visitor-requested rows
+    ('erase_requested' → 'erased') and admin-initiated erasure directly
+    from any non-erased state.
+
+    NULLs name_encrypted, phone_encrypted, phone_hash. Preserves answers,
+    outcome, attempt_number for anonymized funnel.
+
+    Appends an audit log entry (or closes the existing visitor-requested
+    one) with the admin's username as finalized_by."""
+    row = await finalize_erasure_by_admin(
+        db,
+        submission_id=submission_id,
+        admin_username=owner["sub"],
+    )
+    await db.commit()
+    return EraseSubmissionResponse(
+        id=row.id,
+        status=row.status,
+        finalized_at=datetime.now(timezone.utc),
+        finalized_by=owner["sub"],
+    )

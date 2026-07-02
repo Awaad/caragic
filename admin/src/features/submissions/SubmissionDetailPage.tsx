@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useSubmissionDetail,
   useTransitionSubmissionStatus,
+  useFinalizeErasure,
 } from "@/api/hooks";
 import type { SubmissionStatus } from "@/api/types";
 import { OutcomeBadge, StatusBadge, ModeBadge } from "./badges";
@@ -26,11 +27,6 @@ const TRANSITIONS: {
   { target: "pending", label: "Mark as pending" },
   { target: "read", label: "Mark as read" },
   { target: "archived", label: "Archive" },
-  {
-    target: "erased",
-    label: "Finalize erasure",
-    disabledReason: "chunk D",
-  },
 ];
 
 export function SubmissionDetailPage() {
@@ -200,16 +196,11 @@ export function SubmissionDetailPage() {
             />
           </Card>
 
-          {data.outcome === "submitted" && (
-            <button
-              disabled
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md border border-destructive/30 bg-destructive/5 text-destructive/60 text-xs font-mono uppercase tracking-wider cursor-not-allowed"
-              title="Chunk D — erase-my-data flow"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              erase identity
-              <span className="text-[10px] opacity-70">chunk D</span>
-            </button>
+          {data.outcome === "submitted" && data.status !== "erased" && (
+            <EraseButton
+              submissionId={data.id}
+              status={data.status}
+            />
           )}
         </div>
 
@@ -412,5 +403,78 @@ function StatusMenu({
         </div>
       )}
     </div>
+  );
+}
+
+
+function EraseButton({
+  submissionId,
+  status,
+}: {
+  submissionId: string;
+  status: SubmissionStatus;
+}) {
+  const erase = useFinalizeErasure();
+  const [confirming, setConfirming] = useState(false);
+
+  const isRequested = status === "erase_requested";
+  const label = isRequested ? "Finalize erasure" : "Erase identity";
+  const helper = isRequested
+    ? "visitor requested erasure — finalize to null identity fields"
+    : "null name, phone, phone_hash. keeps answers + outcome.";
+
+  if (confirming) {
+    return (
+      <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 space-y-2">
+        <p className="text-xs text-destructive font-medium">
+          this cannot be undone.
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          identity fields will be nulled. an audit log entry records the event.
+        </p>
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={() =>
+              erase.mutate(
+                { id: submissionId },
+                { onSuccess: () => setConfirming(false) },
+              )
+            }
+            disabled={erase.isPending}
+            className="flex-1 rounded-md bg-destructive text-destructive-foreground px-3 py-1.5 text-xs font-mono uppercase tracking-wider hover:bg-destructive/90 disabled:opacity-50 transition-opacity"
+          >
+            {erase.isPending ? "erasing…" : "confirm erase"}
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            disabled={erase.isPending}
+            className="rounded-md border border-border bg-card/60 px-3 py-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+          >
+            cancel
+          </button>
+        </div>
+        {erase.isError && (
+          <p className="text-[11px] text-destructive">
+            {erase.error?.message ?? "erasure failed"}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setConfirming(true)}
+      className={cn(
+        "w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-mono uppercase tracking-wider transition-colors",
+        isRequested
+          ? "border border-warning/50 bg-warning/10 text-warning hover:bg-warning/20"
+          : "border border-destructive/40 bg-destructive/5 text-destructive hover:bg-destructive/10",
+      )}
+      title={helper}
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+      {label}
+    </button>
   );
 }

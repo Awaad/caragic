@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Html } from "@react-three/drei";
 import { useFlow } from "../../flow/useFlow";
 import { useContent } from "../../api/hooks";
-import { useSubmitCapture } from "../../api/mutations";
+import { useSubmitCapture, useRequestErasure } from "../../api/mutations";
 import { PanelFrame } from "./PanelFrame";
 import { TypewriterText } from "./TypewriterText";
 import { CaragicPhoneInput } from "../../components/PhoneInput";
@@ -40,6 +40,8 @@ export function CaptureFormPanel() {
   const responsiveScale = useResponsiveScale();
   const { data: content } = useContent();
   const submit = useSubmitCapture();
+  const erase = useRequestErasure();
+
 
   // instead of the standard choice. Distinct copy makes the second visit
   // feel deliberate, not like the visitor is looping through the same UI.
@@ -100,9 +102,25 @@ export function CaptureFormPanel() {
     setStep("declined");
   };
 
-  const handleEraseData = () => {  
-    useFlowPersistStore.getState().clear();
-    setPhase("opening");
+  const handleEraseData = () => {
+    const submissionId = useFlowPersistStore.getState().lastSubmissionId;
+    if (!submissionId) {
+      // No submission to erase — this shouldn't be reachable since the button
+      // only renders on the reconsider step, which requires lastOutcome. But
+      // if it happens, fall back to local wipe for safety.
+      useFlowPersistStore.getState().clear();
+      setPhase("opening");
+      return;
+    }
+    erase.mutate(
+      { submissionId },
+      {
+        onSuccess: () => {
+          // clear() ran in the mutation's onSuccess; kick to a farewell screen
+          setStep("declined");
+        },
+      },
+    );
   };
 
   return (
@@ -153,7 +171,7 @@ export function CaptureFormPanel() {
           <PanelFrame
             width={BUTTON_WIDTH}
             height={BUTTON_HEIGHT}
-            text="erase my data"
+            text={erase.isPending ? "erasing..." : "erase my data"}
             textSize={0.055}
             position={[0, -0.65, 1.2]}
             rotation={[-0.08, 0.22, 0]}

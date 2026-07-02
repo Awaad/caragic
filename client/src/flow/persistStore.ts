@@ -23,6 +23,7 @@ export interface PersistedFlowState {
   lastOutcome: "submitted" | "declined" | null;
   // True once the visitor has cleared the opener at least once. Drives the
   // companion's first-warp logic — on resume, this should be true.
+  lastSubmissionId: string | null;
   hasWarpedBefore: boolean;
 }
 
@@ -41,6 +42,8 @@ interface PersistActions {
   /** Mark how the most recent flow ended. Used to drive "try again?" UI later. */
   setLastOutcome: (outcome: "submitted" | "declined" | null) => void;
 
+  setLastSubmissionId: (id: string | null) => void;
+
   clear: () => void;
 
   /** Wipe everything. Called after a successful submission so the next visitor
@@ -53,6 +56,7 @@ const initialPersistedState: PersistedFlowState = {
   roundIndex: 0,
   answers: [],
   lastOutcome: null,
+  lastSubmissionId: null,
   hasWarpedBefore: false,
 };
 
@@ -71,6 +75,8 @@ export const useFlowPersistStore = create<PersistedFlowState & PersistActions>()
         set({ roundIndex, answers, hasWarpedBefore }),
 
       setLastOutcome: (outcome) => set({ lastOutcome: outcome }),
+
+      setLastSubmissionId: (lastSubmissionId) => set({ lastSubmissionId }),
       
       clear: () => set(initialPersistedState),
 
@@ -91,6 +97,7 @@ export const useFlowPersistStore = create<PersistedFlowState & PersistActions>()
         roundIndex: state.roundIndex,
         answers: state.answers,
         lastOutcome: state.lastOutcome,
+        lastSubmissionId: state.lastSubmissionId,
         hasWarpedBefore: state.hasWarpedBefore,
       }),
       version: 1,
@@ -113,13 +120,14 @@ export function reconcileWithSession(currentSessionId: string): {
   answers: Answer[];
   hasWarpedBefore: boolean;
   lastOutcome: "submitted" | "declined" | null;
+  lastSubmissionId: string | null;
 } {
   const store = useFlowPersistStore.getState();
 
   // No match → wipe and start fresh
   if (store.session_id !== currentSessionId) {
     store.initSession(currentSessionId);
-    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false, lastOutcome: null, };
+    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false, lastOutcome: null, lastSubmissionId: null, };
   }
 
   // Terminal state: they already finished this session (submitted or declined).
@@ -131,12 +139,13 @@ export function reconcileWithSession(currentSessionId: string): {
       answers: store.answers,
       hasWarpedBefore: true,
       lastOutcome: store.lastOutcome,
+      lastSubmissionId: store.lastSubmissionId,
     };
   }
 
   // Match but no progress → not really a "resume", just continue
   if (store.roundIndex === 0 && store.answers.length === 0) {
-    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false, lastOutcome: null, };
+    return { resume: false, roundIndex: 0, answers: [], hasWarpedBefore: false, lastOutcome: null, lastSubmissionId: null, };
   }
 
   // Genuine resume
@@ -146,5 +155,6 @@ export function reconcileWithSession(currentSessionId: string): {
     answers: store.answers,
     hasWarpedBefore: store.hasWarpedBefore,
     lastOutcome: null,
+    lastSubmissionId: store.lastSubmissionId,
   };
 }

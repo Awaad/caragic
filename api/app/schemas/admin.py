@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
+import uuid
 from pydantic import BaseModel, Field
 
 
@@ -111,7 +112,9 @@ class TokenSummary(BaseModel):
 class TokenListResponse(BaseModel):
     tokens: list[TokenSummary]
     
-    
+SubmissionStatus = Literal[
+    "pending", "read", "archived", "erase_requested", "erased"
+]  
 
 class AdminSubmissionSummary(BaseModel):
     """Inbox list row — no decrypted PII. Shows attempt history and outcome
@@ -119,7 +122,7 @@ class AdminSubmissionSummary(BaseModel):
     id: UUID
     mode: str
     outcome: Literal["submitted", "declined"]
-    status: Literal["pending", "read", "archived"]
+    status: SubmissionStatus
     attempt_number: int
     has_identity: bool  # True iff name_encrypted is not null (i.e. outcome='submitted')
     answer_count: int
@@ -141,7 +144,7 @@ class AdminSubmissionDetail(BaseModel):
     id: UUID
     mode: str
     outcome: Literal["submitted", "declined"]
-    status: Literal["pending", "read", "archived"]
+    status: SubmissionStatus
     attempt_number: int
     name: str | None
     phone: str | None  # E.164
@@ -159,10 +162,21 @@ class AdminSubmissionListResponse(BaseModel):
     next_cursor: UUID | None = None
 
 
+
+
 class SubmissionStatusRequest(BaseModel):
-    status: Literal["pending", "read", "archived"]
+    status: SubmissionStatus
     
     
     
 class WhoAmIResponse(BaseModel):
     username: str
+    
+
+class EraseSubmissionResponse(BaseModel):
+    """Admin finalize response. Returns the updated summary + a note that
+    identity is now gone (helpful confirmation in the UI)."""
+    id: uuid.UUID
+    status: SubmissionStatus
+    finalized_at: datetime
+    finalized_by: str

@@ -134,3 +134,32 @@ export function useTransitionSubmissionStatus() {
     },
   });
 }
+
+export function useFinalizeErasure() {
+  const qc = useQueryClient();
+  return useMutation<
+    { id: string; status: SubmissionStatus; finalized_at: string; finalized_by: string },
+    Error,
+    { id: string }
+  >({
+    mutationFn: ({ id }) =>
+      apiFetch(`/admin/submissions/${id}/erase`, { method: "POST" }),
+    onSuccess: (data) => {
+      // Detail cache — replace the identity fields with null to match the DB.
+      qc.setQueryData<AdminSubmissionDetail | undefined>(
+        ["submissions", "detail", data.id],
+        (old) =>
+          old
+            ? {
+                ...old,
+                status: data.status,
+                name: null,
+                phone: null,
+                phone_hash: null,
+              }
+            : old,
+      );
+      qc.invalidateQueries({ queryKey: ["submissions"], exact: false });
+    },
+  });
+}

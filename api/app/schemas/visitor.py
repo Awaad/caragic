@@ -52,3 +52,10 @@ class SubmissionResponse(BaseModel):
     outcome: Literal["submitted", "declined"]
     attempt_number: int
     created_at: datetime
+
+
+class EraseRequestResponse(BaseModel):
+    """What the visitor sees after requesting erasure — no submission id,
+    no status details. Just confirmation."""
+    accepted: bool
+    message: str
