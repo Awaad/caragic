@@ -8,7 +8,7 @@ export function SubmissionsListPage() {
         </p>
       </div>
       <div className="rounded-lg border border-border bg-card/40 p-8 text-center">
-        <p className="text-sm text-muted-foreground font-mono">chunk C</p>
+        <p className="text-sm text-muted-foreground font-mono">Coming Soon</p>
       </div>
     </div>
   );
