@@ -8,7 +8,8 @@ export type Phase =
   | 'round'
   | 'capturing'
   | 'reveal'
-  | 'closed';
+  | 'closed'
+  | "farewell";
 
 export interface FlowState {
   mode: Mode;

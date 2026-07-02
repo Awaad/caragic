@@ -7,6 +7,8 @@ import { Scene } from "./scene/Scene";
 import { Overlay } from "./components/overlay/Overlay";
 import { DebugOverlay } from "./components/DebugOverlay";
 import type { Phase } from "./flow/types";
+import { Farewell } from "./scene/ui/Farewell";
+import { useFlow } from "./flow/useFlow";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,11 +52,24 @@ function GatedFlow() {
       initialLastOutcome={reconciled.lastOutcome}
     >
       <div style={backgroundStyle}>
-        <Scene />
-        <Overlay />
-        <DebugOverlay />
+        <FarewellGate />
       </div>
     </FlowProvider>
+  );
+}
+
+
+function FarewellGate() {
+  const { phase } = useFlow();
+  if (phase === "farewell") {
+    return <Farewell />;
+  }
+  return (
+    <>
+      <Scene />
+      <Overlay />
+      <DebugOverlay />
+    </>
   );
 }
 
