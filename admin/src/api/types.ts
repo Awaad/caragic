@@ -73,6 +73,14 @@ export interface AdminSubmissionSummary {
   created_at: string;
 }
 
+export interface AdminSubmissionAnswer {
+  round_id: string;
+  option_id: string;
+  question: string | null;
+  option_label: string | null;
+  reveal_text: string | null;
+}
+
 export interface AdminSubmissionDetail {
   id: string;
   mode: string;
@@ -82,7 +90,7 @@ export interface AdminSubmissionDetail {
   name: string | null;
   phone: string | null;
   phone_hash: string | null;
-  answers: Array<{ round_id: string; option_id: string }>;
+  answers: AdminSubmissionAnswer[];
   visitor_id: string;
   session_id: string;
   token_id: string;
