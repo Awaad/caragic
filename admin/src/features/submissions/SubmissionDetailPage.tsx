@@ -5,7 +5,7 @@ import {
   useTransitionSubmissionStatus,
   useFinalizeErasure,
 } from "@/api/hooks";
-import type { SubmissionStatus } from "@/api/types";
+import type { SubmissionStatus, SubmissionOutcome } from "@/api/types";
 import { OutcomeBadge, StatusBadge, ModeBadge } from "./badges";
 import { cn } from "@/lib/utils";
 import {
@@ -109,8 +109,8 @@ export function SubmissionDetailPage() {
               : "Declined submission"}
           </h1>
           <p className="text-xs text-muted-foreground font-mono mt-1">
-            {new Date(data.created_at).toLocaleString()} · attempt{" "}
-            #{data.attempt_number}
+            {new Date(data.created_at).toLocaleString()} · attempt #
+            {data.attempt_number}
           </p>
         </div>
 
@@ -133,9 +133,7 @@ export function SubmissionDetailPage() {
                 icon={User}
                 label="name"
                 value={data.name ?? "—"}
-                onCopy={
-                  data.name ? () => copy(data.name!, "name") : undefined
-                }
+                onCopy={data.name ? () => copy(data.name!, "name") : undefined}
                 copied={copied === "name"}
               />
               <Field
@@ -196,10 +194,11 @@ export function SubmissionDetailPage() {
             />
           </Card>
 
-          {data.outcome === "submitted" && data.status !== "erased" && (
+          {data.status !== "erased" && (
             <EraseButton
               submissionId={data.id}
               status={data.status}
+              outcome={data.outcome}
             />
           )}
         </div>
@@ -344,7 +343,8 @@ function StatusMenu({
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -406,22 +406,29 @@ function StatusMenu({
   );
 }
 
-
 function EraseButton({
   submissionId,
   status,
+  outcome,
 }: {
   submissionId: string;
   status: SubmissionStatus;
+  outcome: SubmissionOutcome;
 }) {
   const erase = useFinalizeErasure();
   const [confirming, setConfirming] = useState(false);
 
   const isRequested = status === "erase_requested";
+  const isDeclined = outcome === "declined";
+
   const label = isRequested ? "Finalize erasure" : "Erase identity";
   const helper = isRequested
-    ? "visitor requested erasure — finalize to null identity fields"
-    : "null name, phone, phone_hash. keeps answers + outcome.";
+    ? isDeclined
+      ? "visitor requested erasure — finalize to mark this record as erased"
+      : "visitor requested erasure — finalize to null identity fields"
+    : isDeclined
+      ? "mark this declined submission as erased. no PII to null."
+      : "null name, phone, phone_hash. keeps answers + outcome.";
 
   if (confirming) {
     return (
