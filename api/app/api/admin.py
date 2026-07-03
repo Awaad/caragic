@@ -311,9 +311,21 @@ async def get_tokens(
     status_filter: Annotated[list[str] | None, Query(alias="status")] = None,
     mode: Annotated[str | None, Query()] = None,
     kind: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    before_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> TokenListResponse:
-    tokens = await list_tokens(db, statuses=status_filter, mode=mode, kind=kind)
-    return TokenListResponse(tokens=[_token_to_summary(t) for t in tokens])
+    tokens, next_cursor = await list_tokens(
+        db,
+        statuses=status_filter,
+        mode=mode,
+        kind=kind,
+        limit=limit,
+        before_id=before_id,
+    )
+    return TokenListResponse(
+        tokens=[_token_to_summary(t) for t in tokens],
+        next_cursor=next_cursor,
+    )
 
 
 @router.post("/tokens/{token_id}/status", response_model=TokenSummary)

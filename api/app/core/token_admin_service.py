@@ -1,3 +1,4 @@
+import uuid as _uuid
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -86,7 +87,14 @@ async def list_tokens(
     statuses: list[str] | None = None,
     mode: str | None = None,
     kind: str | None = None,
-) -> list[Token]:
+    limit: int = 50,
+    before_id: _uuid.UUID | None = None,
+) -> tuple[list[Token], _uuid.UUID | None]:
+    """(rows, next_cursor). Ordered by created_at DESC, id DESC for stable
+    pagination when timestamps collide (fast test loops)."""
+    if limit < 1 or limit > 200:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 200")
+
     q = select(Token)
     if statuses:
         q = q.where(Token.status.in_(statuses))
@@ -94,5 +102,23 @@ async def list_tokens(
         q = q.where(Token.mode == mode)
     if kind is not None:
         q = q.where(Token.kind == kind)
-    q = q.order_by(Token.created_at.desc())
-    return list((await db.execute(q)).scalars().all())
+
+    if before_id is not None:
+        cursor_row = (
+            await db.execute(select(Token).where(Token.id == before_id))
+        ).scalar_one_or_none()
+        if cursor_row is None:
+            raise HTTPException(status_code=422, detail="cursor not found")
+        q = q.where(
+            (Token.created_at < cursor_row.created_at)
+            | (
+                (Token.created_at == cursor_row.created_at)
+                & (Token.id < cursor_row.id)
+            )
+        )
+
+    q = q.order_by(Token.created_at.desc(), Token.id.desc()).limit(limit + 1)
+    rows = list((await db.execute(q)).scalars().all())
+
+    next_cursor = rows[limit - 1].id if len(rows) > limit else None
+    return rows[:limit], next_cursor

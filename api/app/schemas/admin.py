@@ -111,6 +111,7 @@ class TokenSummary(BaseModel):
 
 class TokenListResponse(BaseModel):
     tokens: list[TokenSummary]
+    next_cursor: uuid.UUID | None = None
     
 SubmissionStatus = Literal[
     "pending", "read", "archived", "erase_requested", "erased"
