@@ -19,6 +19,7 @@ dependencies = [
     "pyjwt>=2.13.0",
     "qrcode>=8.2",
     "phonenumbers>=9.0.33",
+    "redis[hiredis]>=8.0.1",
 ]
 
 [build-system]

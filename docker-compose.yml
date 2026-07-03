@@ -46,12 +46,23 @@ services:
     networks:
       - card-internal
 
+  redis:
+    image: redis:7-alpine
+    container_name: card-redis
+    restart: unless-stopped
+    # No persistence in dev restart amnesty for rate limits is fine.
+    # For prod, swap in: command: redis-server --appendonly yes
+    command: redis-server --save "" --appendonly no
+    networks:
+      - card-internal
+
   api:
     build: ./api
     container_name: card-api
     restart: unless-stopped
     depends_on:
       - db
+      - redis
     volumes:
       - ./api:/app
       - /app/.venv
@@ -65,6 +76,10 @@ services:
       ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET}
       CORS_ORIGINS: ${CORS_ORIGINS}
       DEFAULT_PHONE_REGION: ${DEFAULT_PHONE_REGION}
+      # Comma-separated list of upstream IP ranges we trust to pass real client IP.
+      # Empty in dev = trust nobody, request.client.host is the real thing.
+      # Prod behind Cloudflare Tunnel: "*"
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}     
     ports:
       - "8000:8000"  # expose API to host
     networks:
