@@ -9,7 +9,13 @@ import type {
   NotificationsConfigOut, 
   NotificationsConfigIn,
   TestNotificationRequest, 
-  TestNotificationResponse
+  TestNotificationResponse,
+  TokenListResponse,
+  TokenSummary,
+  TokenStatus,
+  CreateTokenResponse,
+  ActiveModeResponse,
+  ModeListResponse,
 } from "./types";
 
 export interface SubmissionsListFilters {
@@ -25,6 +31,20 @@ interface LoginRequest {
   password: string;
   totp_code: string;
 }
+
+// Tokens 
+
+export interface TokensListFilters {
+  statuses?: TokenStatus[];
+  mode?: string;
+  kind?: "card" | "link";
+}
+
+export interface MintTokenRequest {
+  mode: string;
+  label: string | null;
+}
+
 
 
 /** Auth probe. Powers AuthGuard. 401 → not logged in (React Query treats it
@@ -206,5 +226,96 @@ export function useTestNotification() {
         "/admin/settings/notifications/test",
         { method: "POST", body },
       ),
+  });
+}
+
+// Tokens 
+
+function tokenFiltersToQuery(f: TokensListFilters): string {
+  const p = new URLSearchParams();
+  if (f.statuses) f.statuses.forEach((s) => p.append("status", s));
+  if (f.mode) p.set("mode", f.mode);
+  if (f.kind) p.set("kind", f.kind);
+  const q = p.toString();
+  return q ? `?${q}` : "";
+}
+
+export function useTokensList(filters: TokensListFilters) {
+  return useQuery({
+    queryKey: ["tokens", filters],
+    queryFn: () =>
+      apiFetch<TokenListResponse>(`/admin/tokens${tokenFiltersToQuery(filters)}`),
+    staleTime: 30_000,
+  });
+}
+
+
+export function useMintLinkToken() {
+  const qc = useQueryClient();
+  return useMutation<CreateTokenResponse, Error, MintTokenRequest>({
+    mutationFn: (body) =>
+      apiFetch<CreateTokenResponse>("/admin/tokens", {
+        method: "POST",
+        body,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tokens"], exact: false });
+    },
+  });
+}
+
+export function useTransitionTokenStatus() {
+  const qc = useQueryClient();
+  return useMutation<
+    TokenSummary,
+    Error,
+    { id: string; status: TokenStatus; reason?: string }
+  >({
+    mutationFn: ({ id, status, reason }) =>
+      apiFetch<TokenSummary>(`/admin/tokens/${id}/status`, {
+        method: "POST",
+        body: { status, reason: reason ?? null },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tokens"], exact: false });
+    },
+  });
+}
+
+// Modes (read-only for now — needed by tokens page + active-mode switcher)
+
+export function useModesList(statuses?: string[]) {
+  const p = new URLSearchParams();
+  statuses?.forEach((s) => p.append("status", s));
+  const q = p.toString();
+  return useQuery({
+    queryKey: ["modes", statuses ?? []],
+    queryFn: () =>
+      apiFetch<ModeListResponse>(`/admin/modes${q ? `?${q}` : ""}`),
+    staleTime: 60_000,
+  });
+}
+
+// Active mode
+
+export function useActiveMode() {
+  return useQuery({
+    queryKey: ["active-mode"],
+    queryFn: () => apiFetch<ActiveModeResponse>("/admin/mode/active"),
+    staleTime: 30_000,
+  });
+}
+
+export function useSetActiveMode() {
+  const qc = useQueryClient();
+  return useMutation<ActiveModeResponse, Error, { mode: string }>({
+    mutationFn: (body) =>
+      apiFetch<ActiveModeResponse>("/admin/mode/active", {
+        method: "POST",
+        body,
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["active-mode"], data);
+    },
   });
 }

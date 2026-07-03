@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
-import { useSubmissionsList } from "@/api/hooks";
-import { Inbox, ChevronRight } from "lucide-react";
+import { useSubmissionsList, useActiveMode, useTokensList } from "@/api/hooks";
+import { Inbox, ChevronRight, Layers, Link2 } from "lucide-react";
 
 export function DashboardPage() {
   const pending = useSubmissionsList({ statuses: ["pending"], limit: 1 });
+  const activeMode = useActiveMode();
+  const activeTokens = useTokensList({ statuses: ["active"] });
 
   return (
     <div className="animate-fade-in">
@@ -14,46 +16,76 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
           to="/submissions?status=pending"
-          className="group rounded-lg border border-border bg-card/40 p-5 hover:bg-card/70 hover:border-primary/40 transition-all"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <Inbox className="h-4 w-4 text-primary" />
-            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-          </div>
-          <div className="text-2xl font-semibold tracking-tight tabular-nums">
-            {pending.isLoading
+          icon={Inbox}
+          value={
+            pending.isLoading
               ? "—"
               : pending.data
                 ? pending.data.submissions.length +
                   (pending.data.next_cursor ? "+" : "")
-                : "0"}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            pending submissions
-          </p>
-        </Link>
+                : "0"
+          }
+          label="pending submissions"
+        />
 
-        <div className="rounded-lg border border-border bg-card/40 p-5 opacity-40">
-          <div className="text-2xl font-semibold tracking-tight tabular-nums">
-            —
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            funnel · Coming Soon
-          </p>
-        </div>
+        <StatCard
+          to="/tokens?status=active"
+          icon={Link2}
+          value={
+            activeTokens.isLoading
+              ? "—"
+              : String(activeTokens.data?.tokens.length ?? 0)
+          }
+          label="active tokens"
+        />
 
-        <div className="rounded-lg border border-border bg-card/40 p-5 opacity-40">
-          <div className="text-2xl font-semibold tracking-tight tabular-nums">
-            —
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            active mode · Coming Soon
-          </p>
-        </div>
+        <StatCard
+          to="/modes"
+          icon={Layers}
+          value={activeMode.data?.mode ?? "—"}
+          label="active mode"
+          mono
+        />
       </div>
     </div>
+  );
+}
+
+function StatCard({
+  to,
+  icon: Icon,
+  value,
+  label,
+  mono,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  value: string;
+  label: string;
+  mono?: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className="group rounded-lg border border-border bg-card/40 p-5 hover:bg-card/70 hover:border-primary/40 transition-all"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <Icon className="h-4 w-4 text-primary" />
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
+      </div>
+      <div
+        className={
+          mono
+            ? "text-2xl font-semibold tracking-tight font-mono"
+            : "text-2xl font-semibold tracking-tight tabular-nums"
+        }
+      >
+        {value}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">{label}</p>
+    </Link>
   );
 }
