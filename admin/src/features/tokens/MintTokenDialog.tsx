@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   Copy,
@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Sparkles,
   QrCode,
+  Download,
 } from "lucide-react";
 import { useMintLinkToken, useModesList } from "@/api/hooks";
 import type { CreateTokenResponse } from "@/api/types";
@@ -29,6 +30,8 @@ export function MintTokenDialog({
   open: boolean;
   onClose: () => void;
 }) {
+
+  const qrContainerRef = useRef<HTMLDivElement>(null);
   const modes = useModesList(["active"]);
   const mint = useMintLinkToken();
 
@@ -61,6 +64,50 @@ export function MintTokenDialog({
     navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
+  };
+
+  const downloadQr = () => {
+    if (!minted || !qrContainerRef.current) return;
+    const svg = qrContainerRef.current.querySelector("svg");
+    if (!svg) return;
+
+    // SVG → serialized string → <img> → canvas → PNG
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svg);
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+      // 4x for retina-quality PNG at 200 SVG size = 800px PNG
+      const scale = 4;
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((pngBlob) => {
+        if (!pngBlob) return;
+        const pngUrl = URL.createObjectURL(pngBlob);
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        // Filename: prefer label, fall back to token id fragment
+        const stem = (minted.label ?? minted.id.slice(0, 8))
+          .toLowerCase()
+          .replace(/[^a-z0-9-]/g, "-");
+        a.download = `caragic-${minted.mode}-${stem}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(pngUrl);
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    };
+    img.src = url;
   };
 
   if (!open) return null;
@@ -203,13 +250,22 @@ export function MintTokenDialog({
             </button>
 
             {showQr && (
-              <div className="flex justify-center p-4 rounded-md bg-white">
-                <QRCodeSVG
-                  value={minted.url}
-                  size={200}
-                  level="M"
-                  includeMargin={false}
-                />
+              <div className="space-y-2">
+                <div ref={qrContainerRef} className="flex justify-center p-4 rounded-md bg-white">
+                  <QRCodeSVG
+                    value={minted.url}
+                    size={200}
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+                <button
+                  onClick={downloadQr}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-border bg-card/60 px-3 py-2 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                >
+                  <Download className="h-3 w-3" />
+                  download PNG
+                </button>
               </div>
             )}
 

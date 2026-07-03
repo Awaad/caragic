@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 const ALL_STATUSES: TokenStatus[] = ["active", "inactive", "revoked"];
 const ALL_KINDS: TokenKind[] = ["card", "link"];
 
+
+
 function formatRelative(iso: string | null): string {
   if (!iso) return "never";
   const then = new Date(iso).getTime();
@@ -38,15 +40,21 @@ export function TokensListPage() {
   const statuses = searchParams.getAll("status") as TokenStatus[];
 
   const modes = useModesList();
+
+  const before_id = searchParams.get("before_id") ?? undefined;
+
   const tokens = useTokensList({
     kind,
     mode,
     statuses: statuses.length ? statuses : undefined,
+    before_id,
+    limit: 50,
   });
 
   const setFilter = (key: string, value: string | null) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
+      next.delete("before_id");  
       if (value === null) next.delete(key);
       else next.set(key, value);
       return next;
@@ -56,6 +64,7 @@ export function TokensListPage() {
   const toggleStatus = (s: TokenStatus) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
+      next.delete("before_id");  // <-- new
       const current = prev.getAll("status");
       if (current.includes(s)) {
         next.delete("status");
@@ -64,7 +73,7 @@ export function TokensListPage() {
         next.append("status", s);
       }
       return next;
-    });
+      });
   };
 
   const clearFilters = () => setSearchParams(new URLSearchParams());
@@ -185,6 +194,43 @@ export function TokensListPage() {
           </div>
         )}
       </div>
+
+      {tokens.data && tokens.data.tokens.length > 0 && (
+        <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+          <div>
+            {before_id ? (
+              <button
+                onClick={() =>
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.delete("before_id");
+                    return next;
+                  })
+                }
+                className="hover:text-foreground underline decoration-dotted underline-offset-4"
+              >
+                ← first page
+              </button>
+            ) : (
+              <span>page 1</span>
+            )}
+          </div>
+          {tokens.data.next_cursor && (
+            <button
+              onClick={() =>
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  next.set("before_id", tokens.data!.next_cursor!);
+                  return next;
+                })
+              }
+              className="hover:text-foreground"
+            >
+              next page →
+            </button>
+          )}
+        </div>
+      )}
 
       <MintTokenDialog open={mintOpen} onClose={() => setMintOpen(false)} />
     </div>
