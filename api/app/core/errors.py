@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from .notifier import notify_visitor_error
 
 
 logger = logging.getLogger("card.errors")
@@ -15,6 +16,15 @@ logger = logging.getLogger("card.errors")
 def _new_request_id() -> str:
     return uuid.uuid4().hex[:16]
 
+def _is_visitor_path(path: str) -> bool:
+    """True for endpoints that a visitor's browser hits directly. Excludes
+    admin paths (owner-facing, self-diagnosable) and /api/health."""
+    return (
+        path == "/tap"
+        or path.startswith("/c/")
+        or path.startswith("/api/visitor")
+        or path.startswith("/api/content")
+    )
 
 def _error_payload(detail: str | list | dict, request_id: str) -> dict:
     return {"detail": detail, "request_id": request_id}
@@ -60,6 +70,15 @@ def install_error_handlers(app: FastAPI) -> None:
                     "detail": exc.detail,
                 },
             )
+            if _is_visitor_path(request.url.path):
+                notify_visitor_error(
+                    request_id=request_id,
+                    path=request.url.path,
+                    method=request.method,
+                    error_type="HTTPException",
+                    error_message=str(exc.detail),
+                )
+                
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_payload(exc.detail, request_id),
@@ -118,6 +137,15 @@ def install_error_handlers(app: FastAPI) -> None:
                 "method": request.method,
             },
         )
+        if _is_visitor_path(request.url.path):
+            notify_visitor_error(
+                request_id=request_id,
+                path=request.url.path,
+                method=request.method,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+            
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_error_payload("internal error", request_id),
@@ -138,6 +166,14 @@ def install_error_handlers(app: FastAPI) -> None:
                 "method": request.method,
             },
         )
+        if _is_visitor_path(request.url.path):
+            notify_visitor_error(
+                request_id=request_id,
+                path=request.url.path,
+                method=request.method,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=_error_payload("internal error", request_id),

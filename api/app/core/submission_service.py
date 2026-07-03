@@ -8,6 +8,7 @@ from ..models import Mode, Round, Submission, Token, Visitor, VisitorSessionToke
 from ..schemas.visitor import SubmissionRequest
 from .crypto import encrypt_field, hash_phone
 from .phone import PhoneValidationError, parse_and_normalize
+from .notifier import notify_submission_created
 
 
 async def _load_choice_rounds(
@@ -198,4 +199,18 @@ async def create_submission(
     )
     db.add(row)
     await db.flush()
+    
+    # Fire-and-forget notification. Safe to call before commit — the task
+    # runs in a separate session and will find the row after the request
+    # completes and this transaction commits. (If commit fails, the task
+    # sees no row and does nothing useful — which is fine; we'd rather
+    # not notify about a submission that didn't actually persist.)
+    notify_submission_created(
+        submission_id=str(row.id),
+        mode=row.mode,
+        outcome=row.outcome,
+        attempt_number=row.attempt_number,
+        has_identity=row.name_encrypted is not None,
+    )
+
     return row

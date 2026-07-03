@@ -49,7 +49,110 @@ from ..schemas.admin import (
     EraseSubmissionResponse,
 )
 
+from ..core.notifications_config import load_config, save_config
+from ..core.notifier import send_test_email
+from ..schemas.notifications import (
+    NotificationsConfig,
+    NotificationsConfigIn,
+    NotificationsConfigOut,
+    TestNotificationRequest,
+    TestNotificationResponse,
+)
+
+
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _to_out(config: NotificationsConfig) -> NotificationsConfigOut:
+    return NotificationsConfigOut(
+        enabled=config.enabled,
+        smtp_host=config.smtp_host,
+        smtp_port=config.smtp_port,
+        smtp_username=config.smtp_username,
+        smtp_password_set=bool(config.smtp_password),
+        smtp_use_tls=config.smtp_use_tls,
+        notification_from=config.notification_from,
+        notification_to=config.notification_to,
+        last_sent_at=config.last_sent_at,
+        last_error_at=config.last_error_at,
+        last_error_message=config.last_error_message,
+    )
+
+
+@router.get("/settings/notifications", response_model=NotificationsConfigOut)
+async def get_notifications_config(
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationsConfigOut:
+    """Owner-only. Returns the notifications config with password redacted
+    (only smtp_password_set: bool)."""
+    config = await load_config(db)
+    return _to_out(config)
+
+
+@router.put("/settings/notifications", response_model=NotificationsConfigOut)
+async def update_notifications_config(
+    payload: NotificationsConfigIn,
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationsConfigOut:
+    """Owner-only. Updates the config. Empty smtp_password = keep existing."""
+    existing = await load_config(db)
+
+    # Password handling — empty = keep existing
+    smtp_password = payload.smtp_password or existing.smtp_password
+
+    new_config = NotificationsConfig(
+        enabled=payload.enabled,
+        smtp_host=payload.smtp_host,
+        smtp_port=payload.smtp_port,
+        smtp_username=payload.smtp_username,
+        smtp_password=smtp_password,
+        smtp_use_tls=payload.smtp_use_tls,
+        notification_from=payload.notification_from,
+        notification_to=payload.notification_to,
+        # Preserve status fields — they belong to send history, not config
+        last_sent_at=existing.last_sent_at,
+        last_error_at=existing.last_error_at,
+        last_error_message=existing.last_error_message,
+    )
+    await save_config(db, new_config)
+    await db.commit()
+    return _to_out(new_config)
+
+
+@router.post(
+    "/settings/notifications/test", response_model=TestNotificationResponse
+)
+async def test_notifications(
+    payload: TestNotificationRequest,
+    owner: dict = Depends(get_current_owner),
+) -> TestNotificationResponse:
+    """Owner-only. Sends a test email using the config in the request body
+    (NOT what's persisted) — lets the admin validate creds before saving.
+    Returns success/failure with the SMTP error message on failure."""
+    config = NotificationsConfig(
+        enabled=True,  # forced-true for test — we're bypassing the toggle
+        smtp_host=payload.smtp_host,
+        smtp_port=payload.smtp_port,
+        smtp_username=payload.smtp_username,
+        smtp_password=payload.smtp_password,
+        smtp_use_tls=payload.smtp_use_tls,
+        notification_from=payload.notification_from,
+        notification_to=payload.notification_to,
+    )
+    try:
+        await send_test_email(config)
+        return TestNotificationResponse(
+            success=True,
+            message=f"test email sent to {', '.join(payload.notification_to)}",
+        )
+    except Exception as exc:
+        return TestNotificationResponse(
+            success=False,
+            message=str(exc),
+        )
+
 
 
 @router.post("/tokens", response_model=CreateTokenResponse)

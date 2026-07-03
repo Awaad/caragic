@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     # Set per environment: http://localhost:8000 locally, https://card-dev.gedoawad.com in dev VPS.
     public_base_url: str = "http://localhost:8000"
     
+    # for behavior differences that matter (use explicit flags for those)
+    environment: str = "dev"
+    
+    # Dev default matches the compose port mapping.
+    admin_public_base_url: str = "http://localhost:5175"
+    
     # Default region for E.164 phone parsing. Visitors are mostly in North Cyprus
     # which uses Turkish numbering (+90). Frontend picker can override per submission.
     default_phone_region: str = "TR"
