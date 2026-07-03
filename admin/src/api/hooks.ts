@@ -16,7 +16,9 @@ import type {
   CreateTokenResponse,
   ActiveModeResponse,
   ModeListResponse,
+  AdminSubmissionStatsResponse,
 } from "./types";
+
 
 export interface SubmissionsListFilters {
   mode?: string;
@@ -38,6 +40,8 @@ export interface TokensListFilters {
   statuses?: TokenStatus[];
   mode?: string;
   kind?: "card" | "link";
+  limit?: number;
+  before_id?: string;
 }
 
 export interface MintTokenRequest {
@@ -236,6 +240,8 @@ function tokenFiltersToQuery(f: TokensListFilters): string {
   if (f.statuses) f.statuses.forEach((s) => p.append("status", s));
   if (f.mode) p.set("mode", f.mode);
   if (f.kind) p.set("kind", f.kind);
+  if (f.limit) p.set("limit", String(f.limit));
+  if (f.before_id) p.set("before_id", f.before_id);
   const q = p.toString();
   return q ? `?${q}` : "";
 }
@@ -246,6 +252,17 @@ export function useTokensList(filters: TokensListFilters) {
     queryFn: () =>
       apiFetch<TokenListResponse>(`/admin/tokens${tokenFiltersToQuery(filters)}`),
     staleTime: 30_000,
+  });
+}
+
+
+export function useSubmissionStats() {
+  return useQuery({
+    queryKey: ["submissions", "stats"],
+    queryFn: () =>
+      apiFetch<AdminSubmissionStatsResponse>("/admin/submissions/stats"),
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 }
 

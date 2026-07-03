@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { useSubmissionsList, useActiveMode, useTokensList } from "@/api/hooks";
+import { useSubmissionsList, useActiveMode, useTokensList, useSubmissionStats, } from "@/api/hooks";
 import { Inbox, ChevronRight, Layers, Link2 } from "lucide-react";
 
 export function DashboardPage() {
-  const pending = useSubmissionsList({ statuses: ["pending"], limit: 1 });
+  const stats = useSubmissionStats();
   const activeMode = useActiveMode();
   const activeTokens = useTokensList({ statuses: ["active"] });
 
@@ -20,14 +20,8 @@ export function DashboardPage() {
         <StatCard
           to="/submissions?status=pending"
           icon={Inbox}
-          value={
-            pending.isLoading
-              ? "—"
-              : pending.data
-                ? pending.data.submissions.length +
-                  (pending.data.next_cursor ? "+" : "")
-                : "0"
-          }
+          value={stats.isLoading ? "—" : String(stats.data?.pending ?? 0)}
+
           label="pending submissions"
         />
 

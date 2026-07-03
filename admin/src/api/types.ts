@@ -42,6 +42,7 @@ export interface TokenSummary {
 
 export interface TokenListResponse {
   tokens: TokenSummary[];
+  next_cursor: string | null;
 }
 
 export interface CreateTokenResponse {
@@ -100,6 +101,14 @@ export interface AdminSubmissionDetail {
 export interface AdminSubmissionListResponse {
   submissions: AdminSubmissionSummary[];
   next_cursor: string | null;
+}
+
+export interface AdminSubmissionStatsResponse {
+  pending: number;
+  read: number;
+  archived: number;
+  erase_requested: number;
+  erased: number;
 }
 
 export interface NotificationsConfigOut {

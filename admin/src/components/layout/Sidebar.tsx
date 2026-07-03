@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSubmissionsList } from "@/api/hooks";
+import { useSubmissionStats } from "@/api/hooks";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -100,14 +100,12 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
 }
 
 function PendingPill() {
-  const { data } = useSubmissionsList({ statuses: ["pending"], limit: 20 });
-  if (!data || data.submissions.length === 0) return null;
-  const label = data.next_cursor
-    ? `${data.submissions.length}+`
-    : String(data.submissions.length);
+  const { data } = useSubmissionStats();
+  if (!data || data.pending === 0) return null;
+  
   return (
     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary tabular-nums">
-      {label}
+      {data.pending}
     </span>
   );
 }
