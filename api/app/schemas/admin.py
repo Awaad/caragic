@@ -180,3 +180,11 @@ class EraseSubmissionResponse(BaseModel):
     status: SubmissionStatus
     finalized_at: datetime
     finalized_by: str
+    
+    
+class AdminSubmissionStatsResponse(BaseModel):
+    pending: int
+    read: int
+    archived: int
+    erase_requested: int
+    erased: int

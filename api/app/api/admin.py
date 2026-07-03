@@ -26,6 +26,7 @@ from ..core.submission_admin_service import (
     get_submission,
     list_submissions,
     transition_submission_status,
+    submission_stats,
 )
 
 from ..db import get_db
@@ -47,6 +48,7 @@ from ..schemas.admin import (
     SubmissionStatusRequest,
     WhoAmIResponse,
     EraseSubmissionResponse,
+    AdminSubmissionStatsResponse
 )
 
 from ..core.notifications_config import load_config, save_config
@@ -387,6 +389,16 @@ async def get_submissions(
         submissions=[_submission_to_summary(r) for r in rows],
         next_cursor=next_cursor,
     )
+    
+
+@router.get("/submissions/stats", response_model=AdminSubmissionStatsResponse)
+async def get_submission_stats(
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> AdminSubmissionStatsResponse:
+    """Counts by status across all submissions. Powers the dashboard."""
+    counts = await submission_stats(db)
+    return AdminSubmissionStatsResponse(**counts)
 
 
 @router.get("/submissions/{submission_id}", response_model=AdminSubmissionDetail)
@@ -467,3 +479,4 @@ async def erase_submission(
         finalized_at=datetime.now(timezone.utc),
         finalized_by=owner["sub"],
     )
+    

@@ -12,7 +12,7 @@ import uuid as _uuid
 from typing import Literal
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Submission
@@ -78,6 +78,26 @@ async def get_submission(db: AsyncSession, submission_id: _uuid.UUID) -> Submiss
     if row is None:
         raise HTTPException(status_code=404, detail="submission not found")
     return row
+
+async def submission_stats(db: AsyncSession) -> dict[str, int]:
+    """Counts by status. Cheap: one grouped query, indexed columns.
+
+    Returns a dict keyed by status literal, with counts. Statuses with zero
+    rows still appear (value 0) so the dashboard doesn't blink between
+    "loading" and "missing key"."""
+    rows = (
+        await db.execute(
+            select(Submission.status, func.count(Submission.id))
+            .group_by(Submission.status)
+        )
+    ).all()
+
+    counts = {status: 0 for status in (
+        "pending", "read", "archived", "erase_requested", "erased"
+    )}
+    for status_value, count in rows:
+        counts[status_value] = int(count)
+    return counts
 
 
 def decrypt_submission_pii(row: Submission) -> tuple[str | None, str | None]:
