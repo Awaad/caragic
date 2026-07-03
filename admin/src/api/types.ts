@@ -101,3 +101,43 @@ export interface AdminSubmissionListResponse {
   submissions: AdminSubmissionSummary[];
   next_cursor: string | null;
 }
+
+export interface NotificationsConfigOut {
+  enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password_set: boolean;
+  smtp_use_tls: boolean;
+  notification_from: string;
+  notification_to: string[];
+  last_sent_at: string | null;
+  last_error_at: string | null;
+  last_error_message: string | null;
+}
+
+export interface NotificationsConfigIn {
+  enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: string; // empty = keep existing
+  smtp_use_tls: boolean;
+  notification_from: string;
+  notification_to: string[];
+}
+
+export interface TestNotificationRequest {
+  smtp_host: string;
+  smtp_port: number;
+  smtp_username: string;
+  smtp_password: string;
+  smtp_use_tls: boolean;
+  notification_from: string;
+  notification_to: string[];
+}
+
+export interface TestNotificationResponse {
+  success: boolean;
+  message: string;
+}

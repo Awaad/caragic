@@ -6,6 +6,10 @@ import type {
   AdminSubmissionListResponse,
   AdminSubmissionSummary,
   SubmissionStatus,
+  NotificationsConfigOut, 
+  NotificationsConfigIn,
+  TestNotificationRequest, 
+  TestNotificationResponse
 } from "./types";
 
 export interface SubmissionsListFilters {
@@ -161,5 +165,46 @@ export function useFinalizeErasure() {
       );
       qc.invalidateQueries({ queryKey: ["submissions"], exact: false });
     },
+  });
+}
+
+export function useNotificationsConfig() {
+  return useQuery({
+    queryKey: ["settings", "notifications"],
+    queryFn: () =>
+      apiFetch<NotificationsConfigOut>("/admin/settings/notifications"),
+    staleTime: 60_000,
+  });
+}
+
+export function useUpdateNotificationsConfig() {
+  const qc = useQueryClient();
+  return useMutation<
+    NotificationsConfigOut,
+    Error,
+    NotificationsConfigIn
+  >({
+    mutationFn: (body) =>
+      apiFetch<NotificationsConfigOut>("/admin/settings/notifications", {
+        method: "PUT",
+        body,
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(["settings", "notifications"], data);
+    },
+  });
+}
+
+export function useTestNotification() {
+  return useMutation<
+    TestNotificationResponse,
+    Error,
+    TestNotificationRequest
+  >({
+    mutationFn: (body) =>
+      apiFetch<TestNotificationResponse>(
+        "/admin/settings/notifications/test",
+        { method: "POST", body },
+      ),
   });
 }
