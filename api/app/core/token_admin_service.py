@@ -1,5 +1,6 @@
-import uuid as _uuid
 from __future__ import annotations
+
+import uuid as _uuid
 
 from datetime import datetime, timezone
 
