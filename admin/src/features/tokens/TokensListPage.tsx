@@ -15,8 +15,6 @@ import { cn } from "@/lib/utils";
 const ALL_STATUSES: TokenStatus[] = ["active", "inactive", "revoked"];
 const ALL_KINDS: TokenKind[] = ["card", "link"];
 
-
-
 function formatRelative(iso: string | null): string {
   if (!iso) return "never";
   const then = new Date(iso).getTime();
@@ -48,13 +46,13 @@ export function TokensListPage() {
     mode,
     statuses: statuses.length ? statuses : undefined,
     before_id,
-    limit: 50,
+    limit: 20,
   });
 
   const setFilter = (key: string, value: string | null) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.delete("before_id");  
+      next.delete("before_id");
       if (value === null) next.delete(key);
       else next.set(key, value);
       return next;
@@ -64,7 +62,7 @@ export function TokensListPage() {
   const toggleStatus = (s: TokenStatus) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.delete("before_id");  // <-- new
+      next.delete("before_id"); // <-- new
       const current = prev.getAll("status");
       if (current.includes(s)) {
         next.delete("status");
@@ -73,7 +71,7 @@ export function TokensListPage() {
         next.append("status", s);
       }
       return next;
-      });
+    });
   };
 
   const clearFilters = () => setSearchParams(new URLSearchParams());
