@@ -34,6 +34,39 @@ class Settings(BaseSettings):
     # Default region for E.164 phone parsing. Visitors are mostly in North Cyprus
     # which uses Turkish numbering (+90). Frontend picker can override per submission.
     default_phone_region: str = "TR"
+    
+    redis_url: str = "redis://localhost:6379/0"
+    
+    # Trusted proxy IPs — comma-separated. Dev default: none (use direct client IP).
+    # Prod: set to the tunnel's IP range or "*" for full trust.
+    trusted_proxy_ips: str = ""
+
+    # Rate limits — all "count per window_seconds". Env-tunable so we can loosen
+    # for events or crank down under attack without a redeploy.
+    ratelimit_tap_ip_max: int = 5
+    ratelimit_tap_ip_window: int = 300  # 5 min
+
+    ratelimit_link_ip_max: int = 5
+    ratelimit_link_ip_window: int = 300
+
+    ratelimit_submission_session_max: int = 10
+    ratelimit_submission_session_window: int = 86400  # 24 h
+
+    ratelimit_submission_ip_max: int = 30
+    ratelimit_submission_ip_window: int = 3600  # 1 h
+
+    ratelimit_erase_session_max: int = 3
+    ratelimit_erase_session_window: int = 86400
+
+    ratelimit_admin_login_ip_max: int = 10
+    ratelimit_admin_login_ip_window: int = 900  # 15 min
+
+    ratelimit_admin_general_ip_max: int = 300
+    ratelimit_admin_general_ip_window: int = 60  # 1 min
+
+    @property
+    def trusted_proxy_ip_list(self) -> list[str]:
+        return [ip.strip() for ip in self.trusted_proxy_ips.split(",") if ip.strip()]
 
     @property
     def cors_origin_list(self) -> list[str]:

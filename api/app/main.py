@@ -6,6 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .core.errors import install_error_handlers
 
+from redis.asyncio import Redis
+from .core.rate_limit import set_redis_client
+
 from .api import auth as auth_routes
 from .api import visitor as visitor_routes
 from .api import admin as admin_routes
@@ -23,6 +26,18 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: bring up Redis for rate limiting
+    redis = Redis.from_url(settings.redis_url, decode_responses=True)
+    # Ping so we fail fast if Redis is down rather than at the first rate check
+    await redis.ping()
+    set_redis_client(redis)
+
+    yield
+
+    # Shutdown: close the Redis pool cleanly
+    await redis.aclose()
 
 class _RequestIdFilter(logging.Filter):
     """Ensures the request_id field always exists on log records, so the
@@ -38,12 +53,6 @@ logging.getLogger().addFilter(_RequestIdFilter())
 
 settings = get_settings()
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup: any pre-flight checks
-    yield
-    # Shutdown: cleanup
 
 
 app = FastAPI(

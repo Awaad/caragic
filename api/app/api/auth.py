@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-
+from fastapi import APIRouter, Depends, HTTPException, Response, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import get_settings
+from ..core.rate_limit import enforce_admin_general_ip, enforce_admin_login_ip
 from ..core.owner_auth import get_current_owner
 from ..core.security import create_admin_token, verify_password, verify_totp
 from ..schemas.auth import AdminLoginRequest, AdminLoginResponse, AdminMeResponse
+from ..db import get_db
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(enforce_admin_general_ip)],)
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -24,7 +26,13 @@ def _set_session_cookie(response: Response, token: str) -> None:
 
 
 @router.post("/login", response_model=AdminLoginResponse)
-def login(payload: AdminLoginRequest, response: Response) -> AdminLoginResponse:
+async def login(
+    request: Request,
+    payload: AdminLoginRequest,  
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    _login_limit: None = Depends(enforce_admin_login_ip),
+    ) -> AdminLoginResponse:
     settings = get_settings()
 
     # Run all three checks before returning, to avoid leaking which one failed via timing.

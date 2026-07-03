@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+
+from ..core.rate_limit import enforce_tap_ip, enforce_link_ip
+
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +27,7 @@ router = APIRouter(tags=["visitor-entry"])
 async def tap(
     request: Request,
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(enforce_tap_ip),
 ) -> RedirectResponse:
     """NFC card endpoint. Every tap mints a fresh card-kind token + new visitor
     + new session, then redirects into the app.
@@ -49,6 +53,7 @@ async def consume_link(
     token: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(enforce_link_ip),
 ) -> RedirectResponse:
     """Pre-generated link endpoint. Resolves the token, mints a session bound
     to it, redirects into the app. Multi-use — each tap is a fresh visitor on
