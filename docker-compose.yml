@@ -68,6 +68,7 @@ services:
       - /app/.venv
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379/0
       SECRET_KEY: ${SECRET_KEY}
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
       PHONE_HASH_KEY: ${PHONE_HASH_KEY}
