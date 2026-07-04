@@ -81,6 +81,10 @@ services:
       # Empty in dev = trust nobody, request.client.host is the real thing.
       # Prod behind Cloudflare Tunnel: "*"
       TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-}     
+      PRELUDE_API_TOKEN: ${PRELUDE_API_TOKEN}
+      OTP_DEV_MODE: ${OTP_DEV_MODE:-false}
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      ADMIN_PUBLIC_BASE_URL: ${ADMIN_PUBLIC_BASE_URL:-http://localhost:5175}
     ports:
       - "8000:8000"  # expose API to host
     networks:
