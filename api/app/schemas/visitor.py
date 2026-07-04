@@ -59,3 +59,20 @@ class EraseRequestResponse(BaseModel):
     no status details. Just confirmation."""
     accepted: bool
     message: str
+    
+class VerifyStartRequest(BaseModel):
+    phone: str
+
+
+class VerifyStartResponse(BaseModel):
+    verification_id: str
+
+
+class VerifyCheckRequest(BaseModel):
+    verification_id: str
+    code: str
+
+
+class VerifyCheckResponse(BaseModel):
+    verified: bool
+    verified_until: datetime | None = None

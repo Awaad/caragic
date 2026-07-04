@@ -64,5 +64,10 @@ class VisitorSessionToken(Base):
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     superseded_grace_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    
+    verified_phone_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     visitor: Mapped[Visitor] = relationship(back_populates="session_tokens")

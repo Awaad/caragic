@@ -39,4 +39,5 @@ class ModeContentOut(BaseModel):
     session_id: UUID 
     rounds: list[RoundOut]
     reveal: RevealOut
+    verified_until: datetime | None = None
     updated_at: datetime
