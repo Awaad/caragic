@@ -1,15 +1,7 @@
 import { useContent } from "../api/hooks";
 import { PhoneVerifyGate } from "./PhoneVerifyGate";
+import { ChatRoom } from "./ChatRoom";
 
-/**
- * Bookmarkable /chat entry. Two states:
- *   - verified within TTL → chat placeholder (real chat is H2)
- *   - unverified/expired → PhoneVerifyGate
- *
- * Reads verified_until from /api/content and treats it as source of truth.
- * On successful verify, content invalidates → this component re-renders
- * with the chat view.
- */
 export function ChatPage() {
   const { data, isLoading } = useContent();
 
@@ -28,47 +20,7 @@ export function ChatPage() {
 
   return (
     <div style={pageStyle}>
-      {isVerified ? <ChatPlaceholder /> : <PhoneVerifyGate />}
-    </div>
-  );
-}
-
-function ChatPlaceholder() {
-  return (
-    <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
-      <div
-        style={{
-          fontSize: 11,
-          fontFamily: "monospace",
-          letterSpacing: 3,
-          textTransform: "uppercase",
-          color: "rgba(160, 200, 255, 0.6)",
-          marginBottom: 20,
-        }}
-      >
-        — verified —
-      </div>
-      <h1
-        style={{
-          fontSize: 26,
-          color: "rgba(240,240,255,0.95)",
-          fontWeight: 300,
-          marginBottom: 12,
-          letterSpacing: 0.5,
-        }}
-      >
-        chat coming soon
-      </h1>
-      <p
-        style={{
-          fontSize: 14,
-          color: "rgba(200,200,220,0.55)",
-          lineHeight: 1.6,
-        }}
-      >
-        the chat interface lands in the next update. bookmark this page —
-        your verification lasts 24 hours.
-      </p>
+      {isVerified ? <ChatRoom /> : <PhoneVerifyGate />}
     </div>
   );
 }
@@ -76,9 +28,9 @@ function ChatPlaceholder() {
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
   display: "flex",
-  alignItems: "center",
+  alignItems: "stretch",
   justifyContent: "center",
-  padding: 24,
+  padding: 0,
   background: `
     radial-gradient(ellipse at 30% 40%, rgba(50, 30, 100, 0.35) 0%, transparent 55%),
     radial-gradient(ellipse at 70% 60%, rgba(30, 60, 140, 0.3) 0%, transparent 55%),

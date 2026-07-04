@@ -1,6 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from './client';
-import type { ContentResponse } from './types';
+import type { 
+  ContentResponse,
+  ConversationSummary,
+  ChatMessage,
+  MessageListResponse,
+ } from './types';
 
 /**
  * Single source of truth for visitor content.
@@ -23,5 +28,57 @@ export function useContent() {
       }
       return failureCount < 2;
     },
+  });
+}
+
+
+export function useGetOrCreateConversation(enabled: boolean) {
+  return useQuery({
+    queryKey: ["conversation"],
+    queryFn: async () => {
+      const res = await apiFetch<{ conversation: ConversationSummary }>(
+        "/visitor/conversations",
+        { method: "POST" },
+      );
+      return res.conversation;
+    },
+    enabled,
+    staleTime: Infinity, // conversation identity doesn't change
+  });
+}
+
+export function useMessagesQuery(
+  conversationId: string | undefined,
+  beforeId: string | undefined,
+) {
+  const p = new URLSearchParams();
+  if (beforeId) p.set("before_id", beforeId);
+  p.set("limit", "50");
+  return useQuery({
+    queryKey: ["messages", conversationId, beforeId],
+    queryFn: () =>
+      apiFetch<MessageListResponse>(
+        `/visitor/conversations/${conversationId}/messages?${p.toString()}`,
+      ),
+    enabled: !!conversationId,
+    staleTime: 0,
+  });
+}
+
+export function useSendMessage(conversationId: string | undefined) {
+  return useMutation<
+    { message: ChatMessage },
+    Error,
+    { content: string }
+  >({
+    mutationFn: (body) =>
+      apiFetch<{ message: ChatMessage }>(
+        `/visitor/conversations/${conversationId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: body as any,
+        },
+      ),
   });
 }
