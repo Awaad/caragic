@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { useFlowPersistStore } from "../flow/persistStore";
 
@@ -26,6 +26,15 @@ interface EraseRequestResponse {
   message: string;
 }
 
+export interface VerifyStartResponse {
+  verification_id: string;
+}
+
+export interface VerifyCheckResponse {
+  verified: boolean;
+  verified_until: string | null;
+}
+
 /**
  * Submit a flow completion. Two outcomes:
  * - 'submitted' — carries name + phone + full answers, expects 201 back
@@ -43,9 +52,12 @@ export function useSubmitCapture() {
         headers: { "Content-Type": "application/json" },
         body: body as any, 
       }),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const store = useFlowPersistStore.getState();
       store.setLastOutcome(data.outcome);
+      if (variables.phone) {
+        store.setLastPhone(variables.phone);
+      }
       store.setLastSubmissionId(data.id); 
       // Clear progress but leave lastOutcome intact for follow-up UI.
       // We do this by preserving lastOutcome + session_id and resetting the rest.
@@ -72,6 +84,49 @@ export function useRequestErasure() {
       // The visitor's next action is either to close the tab or start over
       // via NFC tap.
       useFlowPersistStore.getState().clear();
+    },
+  });
+}
+
+
+
+export function useStartVerification() {
+  return useMutation<VerifyStartResponse, Error, { phone: string }>({
+    mutationFn: (body) =>
+      apiFetch<VerifyStartResponse>("/visitor/verify/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body as any,
+      }),
+  });
+}
+
+export function useCheckVerification() {
+  const qc = useQueryClient();
+  return useMutation<
+    VerifyCheckResponse,
+    Error,
+    { verification_id: string; code: string; phone: string }
+  >({
+    mutationFn: (body) =>
+      apiFetch<VerifyCheckResponse>("/visitor/verify/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body as any,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["content"] });
+    },
+  });
+}
+
+export function useLogoutVerification() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, void>({
+    mutationFn: () =>
+      apiFetch<void>("/visitor/verify/logout", { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["content"] });
     },
   });
 }

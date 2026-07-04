@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { FlowProvider } from "./flow/FlowContext";
 import { EntryGate } from "./components/EntryGate";
 import { useContent } from "./api/hooks";
@@ -9,6 +10,8 @@ import { DebugOverlay } from "./components/DebugOverlay";
 import type { Phase } from "./flow/types";
 import { Farewell } from "./scene/ui/Farewell";
 import { useFlow } from "./flow/useFlow";
+import { ChatPage } from "./chat/ChatPage";
+import { ModalHost } from "./components/modal/ModalHost";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +71,7 @@ function FarewellGate() {
     <>
       <Scene />
       <Overlay />
+      <ModalHost />
       <DebugOverlay />
     </>
   );
@@ -76,9 +80,19 @@ function FarewellGate() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <EntryGate>
-        <GatedFlow />
-      </EntryGate>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/chat" element={<ChatPage />} />
+          <Route
+            path="/*"
+            element={
+              <EntryGate>
+                <GatedFlow />
+              </EntryGate>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }

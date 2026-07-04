@@ -5,6 +5,7 @@ import { useFlowPersistStore } from "../../flow/persistStore";
 import { ProgressDots } from "./ProgressDots";
 import { EscapeHatch } from "./EscapeHatch";
 import { EraseHatch } from "./EraseHatch";
+import { ChatCTA } from './ChatCTA';
 
 export function Overlay() {
   const { phase, mode, roundIndex, lastOutcome } = useFlow();
@@ -41,6 +42,7 @@ export function Overlay() {
     >
       <ProgressDots total={content.rounds.length} current={roundIndex} />
       {showErase ? <EraseHatch /> : <EscapeHatch />}
+      {phase === "reveal" && <ChatCTA />}
     </div>
   );
 }

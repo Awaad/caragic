@@ -10,6 +10,8 @@ import { isValidPhoneNumber } from "libphonenumber-js";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
 import type { Mode } from "../../modes/types";
 
+import { useModalStore } from "../../components/modal/modalStore";
+
 function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
     case "dating":
@@ -37,6 +39,7 @@ export function CaptureFormPanel() {
   const { phase, mode, roundIndex, answers, setPhase, lastOutcome } = useFlow();
   const responsiveScale = useResponsiveScale();
   const { data: content } = useContent();
+
   const submit = useSubmitCapture();
 
   // instead of the standard choice. Distinct copy makes the second visit
@@ -47,6 +50,10 @@ export function CaptureFormPanel() {
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+
+  const openSubmitConfirm = useModalStore((s) => s.openSubmitConfirm);
+  const setSubmitConfirmPending = useModalStore((s) => s.setSubmitConfirmPending);
+  const closeSubmitConfirm = useModalStore((s) => s.closeSubmitConfirm);
 
   if (phase !== "capturing") return null;
   if (!content) return null;
@@ -63,8 +70,19 @@ export function CaptureFormPanel() {
   const phoneValid = phoneNumber ? isValidPhoneNumber(phoneNumber) : false;
   const canSubmit = name.trim().length > 0 && phoneValid && !submit.isPending;
 
-  const handleSubmit = () => {
+  const openConfirm = () => {
     if (!canSubmit) return;
+    openSubmitConfirm({
+      name: name.trim(),
+      phone: phoneNumber,
+      mode,
+      accentColor: accent,
+      onConfirm: doSubmit,
+    });
+  };
+
+  const doSubmit = () => {
+    setSubmitConfirmPending(true);
     submit.mutate(
       {
         outcome: "submitted",
@@ -77,9 +95,12 @@ export function CaptureFormPanel() {
       },
       {
         onSuccess: () => {
+          closeSubmitConfirm();
           setPhase("reveal");
         },
-        // onError: leave user on the form; error UI is inline below
+        onError: () => {
+          setSubmitConfirmPending(false);
+        },
       },
     );
   };
@@ -108,7 +129,7 @@ export function CaptureFormPanel() {
           step === "declined"
             ? declineMessage
             : step === "reconsider"
-              ? (RECONSIDER_HEADER_TEXT + RECONSIDER_SUB_TEXT)
+              ? RECONSIDER_HEADER_TEXT + RECONSIDER_SUB_TEXT
               : prompt
         }
         textSize={0.085}
@@ -241,7 +262,7 @@ export function CaptureFormPanel() {
               )}
 
               <button
-                onClick={handleSubmit}
+                onClick={openConfirm}
                 disabled={!canSubmit}
                 style={{
                   ...submitButtonStyle(accent),
@@ -269,6 +290,7 @@ export function CaptureFormPanel() {
           />
         </group>
       )}
+
     </group>
   );
 }

@@ -21,6 +21,7 @@ export interface PersistedFlowState {
   roundIndex: number;
   answers: Answer[];
   lastOutcome: "submitted" | "declined" | null;
+  lastPhone: string | null;
   // True once the visitor has cleared the opener at least once. Drives the
   // companion's first-warp logic — on resume, this should be true.
   lastSubmissionId: string | null;
@@ -41,7 +42,7 @@ interface PersistActions {
 
   /** Mark how the most recent flow ended. Used to drive "try again?" UI later. */
   setLastOutcome: (outcome: "submitted" | "declined" | null) => void;
-
+  setLastPhone: (lastPhone: string | null) => void;
   setLastSubmissionId: (id: string | null) => void;
 
   clear: () => void;
@@ -56,6 +57,7 @@ const initialPersistedState: PersistedFlowState = {
   roundIndex: 0,
   answers: [],
   lastOutcome: null,
+  lastPhone: null,
   lastSubmissionId: null,
   hasWarpedBefore: false,
 };
@@ -75,6 +77,8 @@ export const useFlowPersistStore = create<PersistedFlowState & PersistActions>()
         set({ roundIndex, answers, hasWarpedBefore }),
 
       setLastOutcome: (outcome) => set({ lastOutcome: outcome }),
+
+      setLastPhone: (lastPhone: string | null) => set({ lastPhone }),
 
       setLastSubmissionId: (lastSubmissionId) => set({ lastSubmissionId }),
       
@@ -97,6 +101,7 @@ export const useFlowPersistStore = create<PersistedFlowState & PersistActions>()
         roundIndex: state.roundIndex,
         answers: state.answers,
         lastOutcome: state.lastOutcome,
+        lastPhone: state.lastPhone,
         lastSubmissionId: state.lastSubmissionId,
         hasWarpedBefore: state.hasWarpedBefore,
       }),

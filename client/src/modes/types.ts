@@ -46,6 +46,7 @@ export interface ModeContent {
   session_id: string
   rounds: Round[];
   reveal: ModeReveal;
+  verified_until: string | null;
 }
 
 export type ShardRole = 'active' | 'ambient' | 'idle' | 'invitation' | 'flying' | 'hidden';
