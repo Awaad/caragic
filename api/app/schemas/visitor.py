@@ -71,6 +71,7 @@ class VerifyStartResponse(BaseModel):
 class VerifyCheckRequest(BaseModel):
     verification_id: str
     code: str
+    phone: str  # required — needed to compute hash for match/lookup
 
 
 class VerifyCheckResponse(BaseModel):

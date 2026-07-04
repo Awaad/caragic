@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..models import Mode, Reveal, Round, Token, Visitor, VisitorSessionToken
 from ..schemas.content import ModeContentOut, RevealOut, RoundOut
+from ..core.verify_service import compute_verified_until
 from .deps import get_session_token_for_visitor
 
 
@@ -30,6 +31,7 @@ async def get_content(
     401 if no valid session. The frontend uses this single endpoint as both
     'am I authorized?' and 'what do I show?' — one round trip on entry."""
     _visitor, _session, token = visitor_session_token
+    verified_until = compute_verified_until(_session)
     mode_name = token.mode
 
     mode_row = (
@@ -87,5 +89,6 @@ async def get_content(
         reveal=RevealOut(
             name=reveal.name, tagline=reveal.tagline, links=list(reveal.links or [])
         ),
+        verified_until=verified_until,
         updated_at=latest,
     )

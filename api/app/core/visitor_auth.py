@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Cookie, HTTPException, status
+from fastapi import Cookie, HTTPException, status, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,6 +75,11 @@ async def _rotate_if_needed(
         token_hash=_hash_token(new_raw),
         issued_at=now,
         expires_at=now + timedelta(days=settings.visitor_session_ttl_days),
+        # Carry verification forward — rotation is transparent to the
+        # visitor, so their verified state should survive it. The 24h
+        # policy still runs off verified_at, unchanged.
+        verified_phone_hash=row.verified_phone_hash,
+        verified_at=row.verified_at,
     )
     db.add(new_row)
     await db.flush()
@@ -131,3 +137,36 @@ async def get_current_visitor(
 ):
     """FastAPI dependency. Imported and bound in deps.py to inject the db session correctly."""
     raise NotImplementedError("Use the wired version in app/api/deps.py")
+
+
+
+@dataclass
+class ResolvedSession:
+    """What we get back when a request has a valid session cookie.
+    None result from resolve_session_optional means either no cookie or
+    an invalid/expired one — same shape either way to keep callers simple."""
+    visitor: Visitor
+    session: VisitorSessionToken
+    rotated_raw: str | None  # if the session was rotated during resolve, the new raw token
+
+
+async def resolve_session_optional(
+    request: Request,
+    db: AsyncSession,
+) -> ResolvedSession | None:
+    """Non-raising version of resolve_session. Returns None if:
+      - no cookie present
+      - cookie present but invalid / expired / revoked / superseded past grace
+      - visitor revoked
+
+    Used by endpoints that must work for both authenticated and
+    unauthenticated callers (e.g. /verify/check handles both fresh
+    verification and lost-cookie recovery)."""
+    raw = request.cookies.get(VISITOR_COOKIE_NAME)
+    if not raw:
+        return None
+    try:
+        visitor, session, rotated_raw = await resolve_session(db, raw)
+    except HTTPException:
+        return None
+    return ResolvedSession(visitor=visitor, session=session, rotated_raw=rotated_raw)
