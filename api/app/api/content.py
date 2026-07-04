@@ -74,13 +74,17 @@ async def get_content(
     latest = max(
         [mode_row.updated_at, reveal.updated_at, *[r.updated_at for r in rounds]]
     )
-    etag = '"' + hashlib.sha256(f"{mode_name}:{latest.isoformat()}".encode()).hexdigest()[:32] + '"'
+    etag_source = (
+        f"{mode_name}:{latest.isoformat()}:"
+        f"{verified_until.isoformat() if verified_until else 'none'}"
+    )
+    etag = '"' + hashlib.sha256(etag_source.encode()).hexdigest()[:32] + '"'
 
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=status.HTTP_304_NOT_MODIFIED)  # type: ignore[return-value]
 
     response.headers["ETag"] = etag
-    response.headers["Cache-Control"] = "private, max-age=300"
+    response.headers["Cache-Control"] = "private, no-cache"
 
     return ModeContentOut(
         mode=mode_name,

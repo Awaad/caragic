@@ -65,7 +65,7 @@ async def check(
     current_token = None  # token not needed for check; we look it up via submission
 
     # Phone comes back through the payload — see verify_service docstring
-    phone_hint = payload.phone,
+    phone_hint = payload.phone
 
     session, verified_until = await check_verification_and_bind(
         db,

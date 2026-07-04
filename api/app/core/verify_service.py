@@ -75,7 +75,6 @@ async def check_verification_and_bind(
     verification_id: str,
     code: str,
     current_session: VisitorSessionToken | None,
-    current_token: Token | None,
     current_visitor: Visitor | None,
     response: Response,
     phone_hint: str | None = None,
@@ -88,6 +87,7 @@ async def check_verification_and_bind(
     send it back for hashing. If dev-mode is on, the dev flow relies on
     this too.
     """
+    print(f"CVAB phone_hint={phone_hint!r} type={type(phone_hint).__name__}", flush=True)
     if not phone_hint:
         # We need the phone to compute the hash for matching / lookup
         raise HTTPException(
