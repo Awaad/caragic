@@ -20,6 +20,7 @@ dependencies = [
     "qrcode>=8.2",
     "phonenumbers>=9.0.33",
     "redis[hiredis]>=8.0.1",
+    "httpx>=0.28.1",
 ]
 
 [build-system]

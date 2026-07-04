@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -69,6 +70,24 @@ class Settings(BaseSettings):
 
     ratelimit_admin_general_ip_max: int = 300
     ratelimit_admin_general_ip_window: int = 60  # 1 min
+    
+    # Prelude — SMS OTP provider. Sandbox uses test numbers; prod uses real credits.
+    prelude_api_token: str = ""
+    prelude_api_base: str = "https://api.prelude.dev"
+
+    # OTP dev mode — skips Prelude entirely, logs the code, accepts any 6-digit.
+    # Refuses to enable in prod via startup validation below.
+    otp_dev_mode: bool = False
+    
+    @model_validator(mode="after")
+    def _validate_prod_safety(self) -> "Settings":
+        """Refuse to boot with dev shortcuts on in prod."""
+        if self.environment == "prod":
+            if self.otp_dev_mode:
+                raise ValueError("OTP_DEV_MODE cannot be true when ENVIRONMENT=prod")
+            if not self.prelude_api_token:
+                raise ValueError("PRELUDE_API_TOKEN required when ENVIRONMENT=prod")
+        return self
 
     @property
     def trusted_proxy_ip_list(self) -> list[str]:
