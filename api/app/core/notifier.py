@@ -294,3 +294,55 @@ async def send_test_email(config: NotificationsConfig) -> None:
     await asyncio.to_thread(
         _smtp_send_sync, config=config, subject=subject, body=body
     )
+    
+    
+def notify_visitor_message(
+    *,
+    conversation_id: str,
+    visitor_name: str | None,
+    preview: str,
+) -> None:
+    asyncio.create_task(
+        _dispatch_visitor_message(
+            conversation_id=conversation_id,
+            visitor_name=visitor_name,
+            preview=preview,
+        )
+    )
+
+
+async def _dispatch_visitor_message(
+    *, conversation_id: str, visitor_name: str | None, preview: str
+) -> None:
+    try:
+        async with SessionLocal() as db:
+            config = await load_config(db)
+            if not config.enabled:
+                return
+
+            # Skip if admin has been active recently (they'll see it in real-time)
+            from .owner_status import is_admin_ws_active_recent
+            from datetime import timedelta
+            if await is_admin_ws_active_recent(db, timedelta(minutes=2)):
+                return
+
+            settings = get_settings()
+            link = f"{settings.admin_public_base_url.rstrip('/')}/chats/{conversation_id}"
+            who = visitor_name or "a visitor"
+
+            env_tag = f"[{settings.environment}] " if settings.environment != "prod" else ""
+            subject = f"{env_tag}[Caragic] New message from {who}"
+            body_lines = [
+                f"{who} sent you a message:",
+                "",
+                f"  {preview}",
+                "",
+                f"Reply in admin:",
+                f"  {link}",
+                "",
+                "— Caragic",
+            ]
+            body = await _prepend_suppression_note(body_lines)
+            await _send(db, config, subject=subject, body=body)
+    except Exception:
+        logger.exception("notifier: visitor message dispatch failed")

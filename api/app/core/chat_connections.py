@@ -32,6 +32,7 @@ logger = logging.getLogger("card.chat.connections")
 
 CONVERSATION_CHANNEL_PATTERN = "chat:conversation:*"
 ADMIN_CHANNEL = "chat:admin"
+STATUS_CHANNEL = "chat:status"
 
 
 def conversation_channel(conversation_id) -> str:
@@ -97,6 +98,36 @@ class ChatConnectionManager:
             await self._redis.publish(ADMIN_CHANNEL, json.dumps(admin_payload, default=str))
         except Exception:
             logger.exception("failed to publish to redis")
+            
+    async def publish_typing(self, conversation_id, sender: str, is_typing: bool) -> None:
+        payload = {
+            "type": "typing",
+            "conversation_id": str(conversation_id),
+            "sender": sender,
+            "is_typing": is_typing,
+        }
+        await self._redis.publish(conversation_channel(conversation_id), json.dumps(payload))
+        admin_payload = {"channel": conversation_channel(conversation_id), **payload}
+        await self._redis.publish(ADMIN_CHANNEL, json.dumps(admin_payload))
+
+    async def publish_read(self, conversation_id, reader: str, message_ids: list) -> None:
+        payload = {
+            "type": "read",
+            "conversation_id": str(conversation_id),
+            "reader": reader,
+            "message_ids": [str(m) for m in message_ids],
+        }
+        await self._redis.publish(conversation_channel(conversation_id), json.dumps(payload))
+        admin_payload = {"channel": conversation_channel(conversation_id), **payload}
+        await self._redis.publish(ADMIN_CHANNEL, json.dumps(admin_payload))
+
+    async def publish_status(self, status_payload: dict) -> None:
+        payload = {"type": "status", **status_payload}
+        await self._redis.publish(STATUS_CHANNEL, json.dumps(payload, default=str))
+
+    def admin_ws_count(self) -> int:
+        return len(self._admin_subs)
+    
 
     async def _pubsub_loop(self) -> None:
         """Single Redis pattern-subscription. Dispatches to in-memory subs."""
@@ -105,6 +136,8 @@ class ChatConnectionManager:
                 async with self._redis.pubsub() as pubsub:
                     await pubsub.psubscribe(CONVERSATION_CHANNEL_PATTERN)
                     await pubsub.subscribe(ADMIN_CHANNEL)
+                    await pubsub.subscribe(ADMIN_CHANNEL)
+                    await pubsub.subscribe(STATUS_CHANNEL)
                     async for msg in pubsub.listen():
                         if self._stopped.is_set():
                             break
@@ -134,10 +167,15 @@ class ChatConnectionManager:
             logger.warning("pubsub payload not json: %r", raw[:200])
             return
 
-        if channel == ADMIN_CHANNEL:
+        if channel == STATUS_CHANNEL:
+            # Everyone connected to any conversation gets status
+            targets = []
+            for subs in self._conversation_subs.values():
+                targets.extend(subs)
+            targets.extend(self._admin_subs)
+        elif channel == ADMIN_CHANNEL:
             targets = list(self._admin_subs)
         else:
-            # channel: chat:conversation:<uuid>
             key = channel.rsplit(":", 1)[-1]
             targets = list(self._conversation_subs.get(key, set()))
 
@@ -152,6 +190,8 @@ class ChatConnectionManager:
 
     async def _safe_send(self, ws: WebSocket, payload: dict[str, Any]) -> None:
         await ws.send_json(payload)
+        
+    
 
 
 _manager: ChatConnectionManager | None = None

@@ -24,6 +24,7 @@ class MessageOut(BaseModel):
     content: str
     content_metadata: dict = Field(default_factory=dict)
     created_at: datetime
+    read_by_recipient_at: datetime | None = None
 
 
 class MessageListResponse(BaseModel):
@@ -41,3 +42,38 @@ class SendMessageResponse(BaseModel):
 
 class GetOrCreateConversationResponse(BaseModel):
     conversation: ConversationSummary
+    
+    
+class OwnerStatusOut(BaseModel):
+    status: Literal["available", "away", "busy", "offline"]
+    updated_at: datetime | None = None
+
+
+class OwnerStatusIn(BaseModel):
+    status: Literal["available", "away", "busy", "offline"]
+
+
+class AdminConversationSummary(BaseModel):
+    id: uuid.UUID
+    visitor_id: uuid.UUID
+    kind: Literal["instant", "ai"]
+    status: Literal["open", "closed", "archived"]
+    created_at: datetime
+    last_message_at: datetime | None
+    unread_by_owner: bool
+    owner_receipts_enabled: bool
+    # preview: last message content decrypted, truncated
+    last_message_preview: str | None = None
+    last_message_sender: str | None = None
+
+
+class AdminConversationListResponse(BaseModel):
+    conversations: list[AdminConversationSummary]
+
+
+class ReadReceiptRequest(BaseModel):
+    message_ids: list[uuid.UUID]
+
+
+class ToggleReceiptsRequest(BaseModel):
+    enabled: bool

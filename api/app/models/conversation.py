@@ -42,6 +42,12 @@ class Conversation(Base):
     unread_by_owner: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    owner_receipts_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
+    unread_by_visitor: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
 
     __table_args__ = (
         CheckConstraint("kind IN ('instant', 'ai')", name="conversations_kind_check"),

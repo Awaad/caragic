@@ -17,6 +17,8 @@ from .api import content as content_routes
 from .api import submission as submission_routes
 from .api import verify as verify_routes
 from .api import chat_visitor as chat_visitor_routes
+from .api import chat_admin as chat_admin_routes
+from .core.owner_status import start_auto_degrade, stop_auto_degrade
 
 
 # Structured-ish logging. Includes the request_id in every record's extra dict.
@@ -39,10 +41,13 @@ async def lifespan(app: FastAPI):
     manager = ChatConnectionManager(redis)
     await manager.start()
     set_connection_manager(manager)
+    
+    await start_auto_degrade()
 
     yield
 
     # Shutdown: clean up Redis and the chat connection manager
+    await stop_auto_degrade()
     await manager.stop()
     
     await redis.aclose()
@@ -88,6 +93,7 @@ app.include_router(content_routes.router, prefix="/api")
 app.include_router(submission_routes.router, prefix="/api")
 app.include_router(verify_routes.router, prefix="/api")
 app.include_router(chat_visitor_routes.router, prefix="/api")
+app.include_router(chat_admin_routes.router, prefix="/api")
 app.include_router(visitor_routes.router)
 
 @app.get("/api/health")

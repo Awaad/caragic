@@ -140,6 +140,7 @@ def message_to_out_shape(m: Message) -> dict:
         "content": decrypt_field(m.content_encrypted),
         "content_metadata": m.content_metadata or {},
         "created_at": m.created_at,
+        "read_by_recipient_at": m.read_by_recipient_at,
     }
 
 
@@ -176,9 +177,71 @@ async def send_message(
     conversation.updated_at = now
     if sender == "visitor":
         conversation.unread_by_owner = True
+        # owner will see it via unread badge, clear visitor's own tracking
+        conversation.unread_by_visitor = False
     elif sender == "owner":
-        # Owner replied — clear their own unread flag (they just interacted)
+        conversation.unread_by_visitor = True
         conversation.unread_by_owner = False
 
     await db.flush()
     return msg
+
+async def mark_messages_read(
+    db: AsyncSession,
+    *,
+    conversation: Conversation,
+    reader: str,  # 'visitor' or 'owner'
+    message_ids: list,
+) -> list:
+    """Marks recipient-side messages as read. Returns the ids that were
+    actually marked (some may have been already-read, we skip them).
+
+    Owner reading = messages where sender='visitor'.
+    Visitor reading = messages where sender='owner'.
+
+    Respects conversation.owner_receipts_enabled: if owner is the reader
+    AND toggle is off, we silently drop the request (no DB write, no
+    publish). Preserves data hygiene — never stored if disabled.
+    """
+    if reader == "owner" and not conversation.owner_receipts_enabled:
+        return []
+
+    target_sender = "visitor" if reader == "owner" else "owner"
+
+    rows = (
+        await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation.id)
+            .where(Message.id.in_(message_ids))
+            .where(Message.sender == target_sender)
+            .where(Message.read_by_recipient_at.is_(None))
+        )
+    ).scalars().all()
+
+    now = datetime.now(timezone.utc)
+    marked = []
+    for row in rows:
+        row.read_by_recipient_at = now
+        marked.append(row.id)
+
+    # Also clear the conversation-level unread flag if we just read the tail
+    if reader == "owner":
+        conversation.unread_by_owner = False
+    else:
+        conversation.unread_by_visitor = False
+
+    await db.flush()
+    return marked
+
+
+async def list_conversations_for_admin(
+    db: AsyncSession,
+    *,
+    unread_only: bool = False,
+    limit: int = 100,
+) -> list[Conversation]:
+    q = select(Conversation).where(Conversation.status != "archived")
+    if unread_only:
+        q = q.where(Conversation.unread_by_owner.is_(True))
+    q = q.order_by(Conversation.last_message_at.desc().nullslast()).limit(limit)
+    return list((await db.execute(q)).scalars().all())
