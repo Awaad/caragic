@@ -21,6 +21,7 @@ dependencies = [
     "phonenumbers>=9.0.33",
     "redis[hiredis]>=8.0.1",
     "httpx>=0.28.1",
+    "uuid-utils>=0.16.2",
 ]
 
 [build-system]
