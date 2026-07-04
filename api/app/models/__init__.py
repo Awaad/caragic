@@ -4,6 +4,8 @@ from .setting import Setting
 from .content import Mode, Round, Reveal
 from .submission import Submission
 from .erasure_log import ErasureLog
+from .conversation import Conversation
+from .message import Message
 
 __all__ = [
     "Visitor",
@@ -15,4 +17,6 @@ __all__ = [
     "Reveal",
     "Submission",
     "ErasureLog",
+    "Conversation",
+    "Message",
 ]
