@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime, timezone, timedelta
 
 from fastapi import Cookie, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
@@ -7,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..config import get_settings
 from ..core.visitor_auth import (
     VISITOR_COOKIE_NAME,
+    resolve_session_optional,
+    ResolvedSession,
     resolve_session,
+    VERIFICATION_TTL,
 )
 from ..db import get_db
 from ..models import Token, Visitor, VisitorSessionToken
@@ -61,3 +65,26 @@ async def get_session_token_for_visitor(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="token no longer valid"
         )
     return visitor, session_row, token
+
+
+
+
+async def require_verified_session(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> ResolvedSession:
+    """Chat gate. Requires valid session cookie + fresh phone verification
+    (verified_at within 24h)."""
+    resolved = await resolve_session_optional(request, db)
+    if resolved is None:
+        raise HTTPException(status_code=401, detail="session required")
+
+    session = resolved.session
+    if session.verified_phone_hash is None or session.verified_at is None:
+        raise HTTPException(status_code=403, detail="verification required")
+
+    now = datetime.now(timezone.utc)
+    if now > session.verified_at + VERIFICATION_TTL:
+        raise HTTPException(status_code=403, detail="verification expired")
+
+    return resolved

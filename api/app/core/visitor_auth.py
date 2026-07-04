@@ -14,7 +14,7 @@ from ..db import get_db
 from ..models import Visitor, VisitorSessionToken
 
 VISITOR_COOKIE_NAME = "visitor_session"
-
+VERIFICATION_TTL = timedelta(hours=24)
 
 def _hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -151,7 +151,7 @@ class ResolvedSession:
 
 
 async def resolve_session_optional(
-    request: Request,
+    conn,
     db: AsyncSession,
 ) -> ResolvedSession | None:
     """Non-raising version of resolve_session. Returns None if:
@@ -162,7 +162,7 @@ async def resolve_session_optional(
     Used by endpoints that must work for both authenticated and
     unauthenticated callers (e.g. /verify/check handles both fresh
     verification and lost-cookie recovery)."""
-    raw = request.cookies.get(VISITOR_COOKIE_NAME)
+    raw = conn.cookies.get(VISITOR_COOKIE_NAME)
     if not raw:
         return None
     try:
@@ -170,3 +170,4 @@ async def resolve_session_optional(
     except HTTPException:
         return None
     return ResolvedSession(visitor=visitor, session=session, rotated_raw=rotated_raw)
+
