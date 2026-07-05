@@ -23,6 +23,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      VITE_OWNER_NAME: ${VITE_OWNER_NAME}
     volumes:
       - card-db-data:/var/lib/postgresql/data
     ports:
@@ -85,6 +86,7 @@ services:
       OTP_DEV_MODE: ${OTP_DEV_MODE:-false}
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       ADMIN_PUBLIC_BASE_URL: ${ADMIN_PUBLIC_BASE_URL:-http://localhost:5175}
+
     ports:
       - "8000:8000"  # expose API to host
     networks:
