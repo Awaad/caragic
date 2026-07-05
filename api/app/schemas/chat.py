@@ -65,6 +65,8 @@ class AdminConversationSummary(BaseModel):
     # preview: last message content decrypted, truncated
     last_message_preview: str | None = None
     last_message_sender: str | None = None
+    visitor_name: str | None = None
+    submission_id: uuid.UUID | None = None
 
 
 class AdminConversationListResponse(BaseModel):

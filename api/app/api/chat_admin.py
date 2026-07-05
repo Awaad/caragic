@@ -25,7 +25,7 @@ from ..core.owner_status import (
 )
 from ..core.crypto import decrypt_field
 from ..db import get_db, SessionLocal
-from ..models import Message
+from ..models import Message, Submission
 from ..schemas.chat import (
     AdminConversationListResponse,
     AdminConversationSummary,
@@ -62,6 +62,17 @@ async def _to_admin_summary(db: AsyncSession, c) -> AdminConversationSummary:
     ).scalar_one_or_none()
     preview = _preview(decrypt_field(last.content_encrypted)) if last else None
     sender = last.sender if last else None
+    
+    visitor_name: str | None = None
+    if c.submission_id is not None:
+        sub = (
+            await db.execute(
+                select(Submission).where(Submission.id == c.submission_id)
+            )
+        ).scalar_one_or_none()
+        if sub is not None and sub.name_encrypted:
+            visitor_name = decrypt_field(sub.name_encrypted)
+            
     return AdminConversationSummary(
         id=c.id,
         visitor_id=c.visitor_id,
@@ -73,6 +84,8 @@ async def _to_admin_summary(db: AsyncSession, c) -> AdminConversationSummary:
         owner_receipts_enabled=c.owner_receipts_enabled,
         last_message_preview=preview,
         last_message_sender=sender,
+        visitor_name=visitor_name,
+        submission_id=c.submission_id,
     )
 
 
