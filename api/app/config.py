@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     visitor_session_grace_hours: int = 24
 
     # Owner JWT
-    owner_jwt_ttl_minutes: int = 60
+    owner_jwt_ttl_minutes: int = 300
     owner_jwt_algorithm: str = "HS256"
     admin_cookie_name: str = "admin_session"
     # In dev: COOKIE_SECURE=false in .env so cookie works over http://localhost.
