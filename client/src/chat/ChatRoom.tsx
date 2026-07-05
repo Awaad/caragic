@@ -16,6 +16,11 @@ import {
 
 import type { ChatMessage } from "../api/types";
 import { useNavigate } from "react-router-dom";
+import { OWNER_NAME } from "../config/owner";
+import { ContextRibbon } from "./ContextRibbon";
+import { TypingDots } from "./components/TypingDots";
+import { ReadReceipt } from "./components/ReadReceipt";
+import "./chat.css";
 
 const STATUS_COLOR: Record<string, string> = {
   available: "rgba(80, 220, 140, 0.9)",
@@ -49,6 +54,9 @@ export function ChatRoom() {
   const lastTypingSent = useRef(0);
   const initial = useMessagesQuery(conversation.data?.id, undefined);
 
+  // Ribbon fades out once the visitor has written anything.
+  const hasVisitorSent = messages.some((m) => m.sender === "visitor");
+
   useEffect(() => {
     if (!initial.data) return;
     const asc = [...initial.data.messages].reverse();
@@ -57,8 +65,6 @@ export function ChatRoom() {
     setHasMore(!!initial.data.next_cursor);
   }, [initial.data]);
 
-  // We need typed events, so use a lower-level WS if useChatSocket only handles messages.
-  // For clarity: mount a parallel effect that reads the same events.
   useEffect(() => {
     if (!conversation.data) return;
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -106,7 +112,6 @@ export function ChatRoom() {
     return () => {
       if (hb) clearInterval(hb);
       if (ws.readyState === WebSocket.CONNECTING) {
-        // Can't close while connecting; wait for open then close
         ws.addEventListener("open", () => ws.close());
       } else if (ws.readyState === WebSocket.OPEN) {
         ws.close();
@@ -124,7 +129,9 @@ export function ChatRoom() {
   useEffect(() => {
     if (!initial.data || markedInitial.current) return;
     markedInitial.current = true;
-    const ids = messages.filter(m => m.sender === "owner" && !m.read_by_recipient_at).map(m => m.id);
+    const ids = messages
+      .filter((m) => m.sender === "owner" && !m.read_by_recipient_at)
+      .map((m) => m.id);
     if (ids.length) scheduleMarkRead(ids);
   }, [initial.data]);
 
@@ -225,7 +232,7 @@ export function ChatRoom() {
         margin: "0 auto",
         display: "flex",
         flexDirection: "column",
-        height: "100vh",
+        height: "100dvh",
       }}
     >
       <div
@@ -258,7 +265,7 @@ export function ChatRoom() {
             }}
           >
             <div style={{ fontSize: 15, color: "rgba(240,240,255,0.9)" }}>
-              Caragic
+              {OWNER_NAME}
             </div>
             <div
               style={{
@@ -303,6 +310,8 @@ export function ChatRoom() {
         </button>
       </div>
 
+      <ContextRibbon hasVisitorSent={hasVisitorSent} />
+
       <div
         ref={listRef}
         onScroll={onScroll}
@@ -331,25 +340,13 @@ export function ChatRoom() {
         {messages.map((m) => (
           <VisitorBubble key={m.id} message={m} />
         ))}
-        {ownerTyping && (
-          <div
-            style={{
-              alignSelf: "flex-start",
-              fontSize: 12,
-              fontFamily: "monospace",
-              color: "rgba(200,200,220,0.5)",
-              fontStyle: "italic",
-              padding: "4px 12px",
-            }}
-          >
-            typing…
-          </div>
-        )}
+        {ownerTyping && <TypingDots />}
       </div>
 
       <div
         style={{
-          padding: "12px 16px 20px",
+          padding: "12px 16px",
+          paddingBottom: "max(20px, env(safe-area-inset-bottom))",
           borderTop: "1px solid rgba(120,150,255,0.15)",
           display: "flex",
           flexDirection: "column",
@@ -481,6 +478,7 @@ function VisitorBubble({ message }: { message: ChatMessage }) {
       style={{
         alignSelf: isVisitor ? "flex-end" : "flex-start",
         maxWidth: "78%",
+        animation: "bubbleIn 0.25s ease-out",
       }}
     >
       <div
@@ -504,18 +502,9 @@ function VisitorBubble({ message }: { message: ChatMessage }) {
       >
         {message.content}
       </div>
-      {isVisitor && message.read_by_recipient_at && (
-        <div
-          style={{
-            textAlign: "right",
-            fontSize: 9,
-            fontFamily: "monospace",
-            color: "rgba(127,170,255,0.6)",
-            marginTop: 2,
-            paddingRight: 4,
-          }}
-        >
-          read
+      {isVisitor && (
+        <div style={{ textAlign: "right" }}>
+          <ReadReceipt read={!!message.read_by_recipient_at} />
         </div>
       )}
     </div>
