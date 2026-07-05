@@ -24,7 +24,7 @@ from ..core.owner_status import (
     heartbeat as owner_heartbeat,
 )
 from ..core.crypto import decrypt_field
-from ..db import get_db
+from ..db import get_db, SessionLocal
 from ..models import Message
 from ..schemas.chat import (
     AdminConversationListResponse,
@@ -202,10 +202,9 @@ async def put_status(
 
 # Admin WS stream 
 
-@router.websocket("/stream")
+@ws_router.websocket("/stream")
 async def admin_stream(
     websocket: WebSocket,
-    db: AsyncSession = Depends(get_db),
 ) -> None:
     # Cookie auth — reuse the owner cookie
     from ..core.owner_auth import decode_admin_token
@@ -225,8 +224,11 @@ async def admin_stream(
     await websocket.accept()
     mgr = get_connection_manager()
     await mgr.subscribe_admin(websocket)
-    await owner_heartbeat(db)
-    await db.commit()
+
+    # Initial heartbeat in a scoped session
+    async with SessionLocal() as db:
+        await owner_heartbeat(db)
+        await db.commit()
 
     import asyncio
     try:
@@ -237,11 +239,13 @@ async def admin_stream(
             )
             if recv in done:
                 _ = recv.result()  # client heartbeat / ping, ignored content-wise
-                await owner_heartbeat(db)
-                await db.commit()
             else:
                 recv.cancel()
                 await websocket.send_json({"type": "ping"})
+
+            # Heartbeat after every loop iteration, in a scoped session that
+            # commits + closes before we go back to waiting. No pool holding.
+            async with SessionLocal() as db:
                 await owner_heartbeat(db)
                 await db.commit()
     except WebSocketDisconnect:

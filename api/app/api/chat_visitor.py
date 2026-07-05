@@ -24,7 +24,7 @@ from ..core.visitor_auth import (
     resolve_session_optional,
 )
 from ..core.notifier import notify_visitor_message
-from ..db import get_db
+from ..db import get_db, SessionLocal 
 from ..schemas.chat import (
     ConversationSummary,
     GetOrCreateConversationResponse,
@@ -214,39 +214,42 @@ async def visitor_get_owner_status(
 async def stream(
     websocket: WebSocket,
     conversation_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Receive-only stream. Auth via cookie (WS upgrade includes cookies).
-    Sends are still HTTP POST — simpler auth surface, better replayability
-    on disconnect.
-
-    Sends a heartbeat every 25s to keep proxies from timing out; visitor
-    doesn't need to respond."""
-    # Manual auth — Depends() on WebSocket routes doesn't gate connection
     from ..core.visitor_auth import resolve_session_optional, VERIFICATION_TTL
     from datetime import datetime, timezone
 
-    resolved = await resolve_session_optional(websocket, db)
-    if resolved is None:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="unauth")
-        return
+    # Scoped session for auth + ownership only. Commit before releasing so the
+    # last_seen_at UPDATE (from resolve_session) doesn't get rolled back — and,
+    # more importantly, so the row lock it takes is released before we enter
+    # the long-lived receive loop.
+    async with SessionLocal() as db:
+        resolved = await resolve_session_optional(websocket, db)
+        if resolved is None:
+            await db.rollback()
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="unauth")
+            return
 
-    session = resolved.session
-    if session.verified_phone_hash is None or session.verified_at is None:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="unverified")
-        return
-    if datetime.now(timezone.utc) > session.verified_at + VERIFICATION_TTL:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="verification expired")
-        return
+        session = resolved.session
+        if session.verified_phone_hash is None or session.verified_at is None:
+            await db.rollback()
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="unverified")
+            return
+        if datetime.now(timezone.utc) > session.verified_at + VERIFICATION_TTL:
+            await db.rollback()
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="verification expired")
+            return
 
-    # Ownership check
-    try:
-        await _load_conversation_for_visitor(
-            db, conversation_id=conversation_id, visitor=resolved.visitor
-        )
-    except Exception:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="not found")
-        return
+        try:
+            await _load_conversation_for_visitor(
+                db, conversation_id=conversation_id, visitor=resolved.visitor
+            )
+        except Exception:
+            await db.rollback()
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="not found")
+            return
+
+        await db.commit()   # ← releases the visitor row lock BEFORE the receive loop
+    # session closed here
 
     await websocket.accept()
     manager = get_connection_manager()
@@ -255,23 +258,18 @@ async def stream(
     import asyncio
     try:
         while True:
-            # We don't expect client messages; if they send one, ignore.
-            # asyncio.wait lets us multiplex a heartbeat.
             recv = asyncio.create_task(websocket.receive_text())
             done, pending = await asyncio.wait(
                 {recv}, timeout=25.0, return_when=asyncio.FIRST_COMPLETED
             )
             if recv in done:
-                # Consumed; loop
                 _ = recv.result()
             else:
-                # Timeout — send heartbeat, cancel the pending recv
                 recv.cancel()
                 await websocket.send_json({"type": "ping"})
     except WebSocketDisconnect:
         pass
     except Exception:
-        # any other error → disconnect
         pass
     finally:
         await manager.unsubscribe(websocket)
