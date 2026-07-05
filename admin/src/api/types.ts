@@ -170,6 +170,8 @@ export interface AdminConversationSummary {
   owner_receipts_enabled: boolean;
   last_message_preview: string | null;
   last_message_sender: string | null;
+  visitor_name: string | null;
+  submission_id: string | null;
 }
 
 export interface AdminConversationListResponse {

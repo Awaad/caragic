@@ -14,10 +14,18 @@ export function ConversationList({
   isLoading: boolean;
 }) {
   if (isLoading) {
-    return <div className="p-6 text-xs text-muted-foreground font-mono">loading…</div>;
+    return (
+      <div className="p-6 text-xs text-muted-foreground font-mono">
+        loading…
+      </div>
+    );
   }
   if (conversations.length === 0) {
-    return <div className="p-6 text-xs text-muted-foreground font-mono text-center">no conversations</div>;
+    return (
+      <div className="p-6 text-xs text-muted-foreground font-mono text-center">
+        no conversations
+      </div>
+    );
   }
   return (
     <div className="overflow-y-auto h-full">
@@ -31,13 +39,13 @@ export function ConversationList({
             selectedId === c.id && "bg-accent/50",
           )}
         >
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-sm font-mono text-foreground truncate">
-              {c.visitor_id.slice(0, 8)}
-            </div>
-            <div className="text-[10px] text-muted-foreground font-mono">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <NameLabel name={c.visitor_name} fallbackId={c.visitor_id} />
+            <div className="text-[10px] text-muted-foreground font-mono shrink-0">
               {c.last_message_at
-                ? formatDistanceToNow(new Date(c.last_message_at), { addSuffix: true })
+                ? formatDistanceToNow(new Date(c.last_message_at), {
+                    addSuffix: true,
+                  })
                 : "—"}
             </div>
           </div>
@@ -54,6 +62,35 @@ export function ConversationList({
           </div>
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Row identity. Three cases:
+ * - Normal: visitor_name is set → render the name.
+ * - Erased: submission still exists but name_encrypted was nulled by
+ *   the erase-identity flow → render "erased visitor" muted.
+ * - Anomalous: no submission at all → should not happen post-verify, but
+ *   render a truncated visitor_id so we can still find the row in logs.
+ */
+function NameLabel({
+  name,
+  fallbackId,
+}: {
+  name: string | null;
+  fallbackId: string;
+}) {
+  if (name) {
+    return (
+      <div className="text-sm text-foreground truncate">{name}</div>
+    );
+  }
+  return (
+    <div className="text-sm italic text-muted-foreground/70 truncate font-mono">
+      {name === null && fallbackId
+        ? "erased visitor"
+        : `visitor ${fallbackId.slice(0, 8)}`}
     </div>
   );
 }
