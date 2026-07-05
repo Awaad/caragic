@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
           ws: true,
         },
         "/tap": { target: apiTarget, changeOrigin: true },
-        "/c": { target: apiTarget, changeOrigin: true },
+        "/c/": { target: apiTarget, changeOrigin: true },
       },
     },
   };
