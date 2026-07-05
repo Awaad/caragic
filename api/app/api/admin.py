@@ -14,6 +14,8 @@ from ..core.mode_service import (
     list_modes,
     purge_mode,
     transition_mode_status,
+    get_mode_detail,       
+    update_mode_content,
 )
 from ..core.token_admin_service import (
     list_tokens,
@@ -48,7 +50,11 @@ from ..schemas.admin import (
     SubmissionStatusRequest,
     WhoAmIResponse,
     EraseSubmissionResponse,
-    AdminSubmissionStatsResponse
+    AdminSubmissionStatsResponse,
+    AdminModeDetail,
+    AdminRoundDetail,
+    AdminRevealDetail,
+    UpdateModeContentRequest,
 )
 
 from ..core.notifications_config import load_config, save_config
@@ -217,6 +223,44 @@ def _mode_to_summary(mode, round_count: int) -> ModeSummary:
         created_at=mode.created_at,
         updated_at=mode.updated_at,
     )
+    
+    
+def _mode_to_detail(mode, rounds, reveal) -> AdminModeDetail:
+    return AdminModeDetail(
+        id=str(mode.id),
+        name=mode.name,
+        status=mode.status,
+        rounds=[
+            AdminRoundDetail(
+                id=r.id,
+                slug=r.slug,
+                position=r.position,
+                round_type=r.round_type,
+                data=r.data,
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+            )
+            for r in rounds
+        ],
+        reveal=AdminRevealDetail(
+            name=reveal.name,
+            tagline=reveal.tagline,
+            links=list(reveal.links or []),
+            updated_at=reveal.updated_at,
+        ),
+        created_at=mode.created_at,
+        updated_at=mode.updated_at,
+    )
+
+
+@router.get("/modes/{name}", response_model=AdminModeDetail)
+async def get_one_mode(
+    name: str,
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> AdminModeDetail:
+    mode, rounds, reveal = await get_mode_detail(db, name)
+    return _mode_to_detail(mode, rounds, reveal)
 
 
 @router.get("/modes", response_model=ModeListResponse)
@@ -246,6 +290,20 @@ async def create_new_mode(
     rows = await list_modes(db, statuses=[mode.status])
     matching = [(m, c) for m, c in rows if m.name == mode.name]
     return _mode_to_summary(*matching[0])
+
+
+@router.put("/modes/{name}", response_model=AdminModeDetail)
+async def update_mode(
+    name: str,
+    payload: UpdateModeContentRequest,
+    owner: dict = Depends(get_current_owner),
+    db: AsyncSession = Depends(get_db),
+) -> AdminModeDetail:
+    mode, rounds, reveal = await update_mode_content(
+        db, name, payload.rounds, payload.reveal
+    )
+    await db.commit()
+    return _mode_to_detail(mode, rounds, reveal)
 
 
 @router.post("/modes/{name}/status", response_model=ModeSummary)

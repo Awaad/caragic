@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import Mode, Reveal, Round, Setting, Token, VisitorSessionToken
@@ -187,3 +187,112 @@ async def list_modes(
         q = q.where(Mode.status.in_(statuses))
     q = q.order_by(Mode.name)
     return [(row[0], row[1]) for row in (await db.execute(q)).all()]
+
+
+async def get_mode_detail(
+    db: AsyncSession, mode_name: str
+) -> tuple[Mode, list[Round], Reveal]:
+    """Load a mode with all its rounds (ordered) and reveal."""
+    mode = (
+        await db.execute(select(Mode).where(Mode.name == mode_name))
+    ).scalar_one_or_none()
+    if mode is None:
+        raise HTTPException(status_code=404, detail=f"mode not found: {mode_name}")
+
+    rounds = list(
+        (
+            await db.execute(
+                select(Round)
+                .where(Round.mode_id == mode.id)
+                .order_by(Round.position)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    reveal = (
+        await db.execute(select(Reveal).where(Reveal.mode_id == mode.id))
+    ).scalar_one_or_none()
+    if reveal is None:
+        # Should never happen — reveal is created with the mode. Bubble up.
+        raise HTTPException(
+            status_code=500, detail=f"reveal missing for mode {mode_name!r}"
+        )
+    return mode, rounds, reveal
+
+
+async def update_mode_content(
+    db: AsyncSession,
+    mode_name: str,
+    rounds_in: list,  # list[RoundIn]
+    reveal_in,        # RevealIn
+) -> tuple[Mode, list[Round], Reveal]:
+    """Replace the mode's rounds and reveal content atomically.
+
+    Strategy: validate structure + per-round data, DELETE all existing
+    rounds, INSERT the new ones. Reveal is updated in place (single row).
+    Answers are decoupled from rounds at the schema level, so deleting
+    round rows doesn't orphan anything the visitor UI depends on.
+
+    Refreshes the visitor content ETag by touching Mode.updated_at
+    explicitly — otherwise, if only rounds change and the reveal payload
+    is byte-identical to what's stored, SQLAlchemy might not emit an
+    UPDATE on either mode or reveal and the visitor would keep serving
+    stale content.
+    """
+    mode = (
+        await db.execute(select(Mode).where(Mode.name == mode_name))
+    ).scalar_one_or_none()
+    if mode is None:
+        raise HTTPException(status_code=404, detail=f"mode not found: {mode_name}")
+
+    _validate_round_structure(rounds_in)
+    for r in rounds_in:
+        _validate_round_data(r.round_type, r.data)
+
+    # Wipe rounds. FK from other tables (answers) is null-on-delete or
+    # doesn't exist — that's on the caller to guarantee, per the
+    # "answers are decoupled" contract in the design notes.
+    await db.execute(delete(Round).where(Round.mode_id == mode.id))
+
+    for position, r in enumerate(rounds_in):
+        db.add(
+            Round(
+                mode_id=mode.id,
+                position=position,
+                round_type=r.round_type,
+                slug=r.slug,
+                data=r.data,
+            )
+        )
+
+    # Update reveal in place — single row per mode.
+    reveal = (
+        await db.execute(select(Reveal).where(Reveal.mode_id == mode.id))
+    ).scalar_one_or_none()
+    if reveal is None:
+        raise HTTPException(
+            status_code=500, detail=f"reveal missing for mode {mode_name!r}"
+        )
+    reveal.name = reveal_in.name
+    reveal.tagline = reveal_in.tagline
+    reveal.links = reveal_in.links
+
+    # Explicit updated_at bump on the mode row — see docstring.
+    from datetime import datetime, timezone
+    mode.updated_at = datetime.now(timezone.utc)
+
+    await db.flush()
+
+    fresh_rounds = list(
+        (
+            await db.execute(
+                select(Round)
+                .where(Round.mode_id == mode.id)
+                .order_by(Round.position)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return mode, fresh_rounds, reveal

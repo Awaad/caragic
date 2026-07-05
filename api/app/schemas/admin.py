@@ -84,6 +84,41 @@ class ModeSummary(BaseModel):
 
 class ModeListResponse(BaseModel):
     modes: list[ModeSummary]
+    
+    
+class AdminRevealDetail(BaseModel):
+    name: str
+    tagline: str
+    links: list[Any]
+    updated_at: datetime
+
+
+class AdminRoundDetail(BaseModel):
+    id: UUID
+    slug: str
+    position: int
+    round_type: Literal["choice", "capture"]
+    data: dict[str, Any]  # shape discriminated by round_type
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminModeDetail(BaseModel):
+    id: str
+    name: str
+    status: ModeStatus
+    rounds: list[AdminRoundDetail]
+    reveal: AdminRevealDetail
+    created_at: datetime
+    updated_at: datetime
+
+
+class UpdateModeContentRequest(BaseModel):
+    """Replace all rounds + reveal atomically. Name and status are not
+    editable via this route — status has its own endpoint, and renaming
+    would break tokens that FK on mode name."""
+    rounds: list[RoundIn] = Field(min_length=1)
+    reveal: RevealIn
 
 
 # tokens lifecycle
