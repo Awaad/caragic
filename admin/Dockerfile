@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install deps first for better layer caching
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
 # Source mounted at runtime via compose; this COPY is here so a plain
 # `docker build` still produces a runnable image without the mount.
