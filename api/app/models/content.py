@@ -50,32 +50,6 @@ class Mode(Base):
         back_populates="mode", cascade="all, delete-orphan", uselist=False
     )
 
-    __tablename__ = "modes"
-    __table_args__ = (
-        CheckConstraint(
-            "name IN ('dating', 'mix', 'friendship', 'professional')",
-            name="ck_modes_name",
-        ),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
-    )
-    name: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-    rounds: Mapped[list["Round"]] = relationship(
-        back_populates="mode", cascade="all, delete-orphan", order_by="Round.position"
-    )
-    reveal: Mapped["Reveal"] = relationship(
-        back_populates="mode", cascade="all, delete-orphan", uselist=False
-    )
-
 class Round(Base):
     __tablename__ = "rounds"
     __table_args__ = (
