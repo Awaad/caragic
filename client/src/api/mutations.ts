@@ -120,6 +120,43 @@ export function useCheckVerification() {
   });
 }
 
+import type { ChatMessage } from "./types";
+
+export function useSendMessage(conversationId: string | undefined) {
+  return useMutation<{ message: ChatMessage }, Error, { content: string }>({
+    mutationFn: (body) =>
+      apiFetch<{ message: ChatMessage }>(
+        `/visitor/conversations/${conversationId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: body as any,
+        },
+      ),
+  });
+}
+
+
+export function useVisitorMarkRead(conversationId: string | undefined) {
+  return useMutation<{ marked: number }, Error, { message_ids: string[] }>({
+    mutationFn: (body) =>
+      apiFetch<{ marked: number }>(
+        `/visitor/conversations/${conversationId}/read`,
+        { method: "POST", body: body as any, headers: { "Content-Type": "application/json" } },
+      ),
+  });
+}
+
+export function useVisitorTyping(conversationId: string | undefined) {
+  return useMutation<{ ok: boolean }, Error, { is_typing: boolean }>({
+    mutationFn: (body) =>
+      apiFetch<{ ok: boolean }>(
+        `/visitor/conversations/${conversationId}/typing`,
+        { method: "POST", body: body as any, headers: { "Content-Type": "application/json" } },
+      ),
+  });
+}
+
 export function useLogoutVerification() {
   const qc = useQueryClient();
   return useMutation<void, Error, void>({

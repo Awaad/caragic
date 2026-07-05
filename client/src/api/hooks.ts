@@ -65,20 +65,14 @@ export function useMessagesQuery(
   });
 }
 
-export function useSendMessage(conversationId: string | undefined) {
-  return useMutation<
-    { message: ChatMessage },
-    Error,
-    { content: string }
-  >({
-    mutationFn: (body) =>
-      apiFetch<{ message: ChatMessage }>(
-        `/visitor/conversations/${conversationId}/messages`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: body as any,
-        },
-      ),
+
+export function useOwnerStatus() {
+  return useQuery({
+    queryKey: ["owner-status"],
+    queryFn: () => apiFetch<{ status: string; updated_at: string | null }>(
+      "/visitor/conversations/status",
+    ),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 }
