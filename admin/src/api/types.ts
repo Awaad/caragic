@@ -25,6 +25,52 @@ export interface ActiveModeResponse {
   mode: string;
 }
 
+
+export interface ChoiceOptionDetail {
+  id: string;
+  label: string;
+  revealText: string;
+}
+
+export interface ChoiceRoundData {
+  question: string;
+  options: ChoiceOptionDetail[];
+}
+
+export interface CaptureRoundData {
+  prompt: string;
+  acceptLabel: string;
+  declineLabel: string;
+  declineMessage: string;
+}
+
+export interface RoundDetail {
+  id: string;
+  slug: string;
+  position: number;
+  round_type: "choice" | "capture";
+  data: ChoiceRoundData | CaptureRoundData; // discriminate on round_type
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RevealDetail {
+  name: string;
+  tagline: string;
+  links: unknown[];
+  updated_at: string;
+}
+
+export interface ModeDetail {
+  id: string;
+  name: string;
+  status: "active" | "inactive" | "archived";
+  rounds: RoundDetail[];
+  reveal: RevealDetail;
+  created_at: string;
+  updated_at: string;
+}
+
 // Tokens
 export type TokenStatus = "active" | "inactive" | "revoked";
 export type TokenKind = "card" | "link";

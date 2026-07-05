@@ -22,6 +22,7 @@ import type {
   AdminConversationListResponse,
   ChatMessage,
   MessageListResponse,
+  ModeDetail
 } from "./types";
 
 
@@ -358,6 +359,20 @@ export function useModes(statuses?: string[]) {
       if (!res.ok) throw new Error("failed to load modes");
       return (await res.json()) as ModeListResponse;
     },
+  });
+}
+
+export function useModeDetail(name: string | undefined) {
+  return useQuery({
+    queryKey: ["admin-mode-detail", name],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/modes/${name}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return (await res.json()) as ModeDetail;
+    },
+    enabled: !!name,
   });
 }
 
