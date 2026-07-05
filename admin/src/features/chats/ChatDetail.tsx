@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useLayoutEffect } from "react";
-import { Send, EyeOff, Eye, MoreVertical } from "lucide-react";
+import { Send, EyeOff, Eye, MoreVertical, ArrowLeft } from "lucide-react";
 import {
   useAdminMessages,
   useAdminSendMessage,
@@ -12,6 +12,7 @@ import { useAdminChatSocket } from "./useAdminChatSocket";
 import { formatDistanceToNow } from "date-fns";
 import type { ChatMessage } from "@/api/types";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 export function ChatDetail({ conversationId }: { conversationId: string }) {
   const convos = useAdminConversations(false);
@@ -21,7 +22,7 @@ export function ChatDetail({ conversationId }: { conversationId: string }) {
   const markRead = useAdminMarkRead(conversationId);
   const typing = useAdminTyping(conversationId);
   const toggle = useToggleReceipts(conversationId);
-
+  const navigate = useNavigate()
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [oldestCursor, setOldestCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -46,6 +47,7 @@ export function ChatDetail({ conversationId }: { conversationId: string }) {
   useAdminChatSocket({
     enabled: true,
     onEvent: (evt) => {
+      console.log("ChatDetail WS:", evt, "for convo:", conversationId);
       if (evt.conversation_id !== conversationId && evt.channel !== `chat:conversation:${conversationId}`) return;
       if (evt.type === "message" && evt.message) {
         setMessages((prev) => (prev.some((m) => m.id === evt.message.id) ? prev : [...prev, evt.message]));
@@ -154,7 +156,16 @@ export function ChatDetail({ conversationId }: { conversationId: string }) {
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">
             visitor
           </div>
-          <div className="font-mono text-sm">{convo?.visitor_id.slice(0, 12)}…</div>
+           <button
+              onClick={() => navigate("/chats")}
+              className="md:hidden text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="flex-1">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60">visitor</div>
+              <div className="font-mono text-sm">{convo?.visitor_id.slice(0, 12)}…</div>
+            </div>
         </div>
         <button
           onClick={() => convo && toggle.mutate({ enabled: !convo.owner_receipts_enabled })}
@@ -169,7 +180,9 @@ export function ChatDetail({ conversationId }: { conversationId: string }) {
           {convo?.owner_receipts_enabled ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
           receipts {convo?.owner_receipts_enabled ? "on" : "off"}
         </button>
+
       </div>
+      
 
       <div
         ref={listRef}

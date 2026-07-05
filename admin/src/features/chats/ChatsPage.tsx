@@ -6,6 +6,7 @@ import { useAdminChatSocket } from "./useAdminChatSocket";
 import { ConversationList } from "./ConversationList";
 import { ChatDetail } from "./ChatDetail";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 export function ChatsPage() {
   const { id: routeId } = useParams<{ id?: string }>();
@@ -54,7 +55,11 @@ export function ChatsPage() {
       </div>
 
       <div className="flex-1 flex gap-4 px-6 pb-6 min-h-0">
-        <div className="w-80 shrink-0 rounded-lg border border-border bg-card/40 overflow-hidden">
+        <div className={cn(
+            "w-80 shrink-0 rounded-lg border border-border bg-card/40 overflow-hidden",
+            "md:block",
+            selectedId ? "hidden md:block" : "block flex-1 md:flex-none w-full md:w-80",
+          )}>
           <ConversationList
             conversations={convos.data?.conversations ?? []}
             selectedId={selectedId}
@@ -62,10 +67,13 @@ export function ChatsPage() {
             isLoading={convos.isLoading}
           />
         </div>
-        <div className="flex-1 rounded-lg border border-border bg-card/40 overflow-hidden">
-          {selectedId ? (
-            <ChatDetail conversationId={selectedId} key={selectedId} />
-          ) : (
+        <div className={cn(
+              "rounded-lg border border-border bg-card/40 overflow-hidden md:flex-1",
+              selectedId ? "flex-1" : "hidden md:block",
+            )}
+          >
+            {selectedId ? <ChatDetail conversationId={selectedId} key={selectedId} />
+                   : (
             <div className="h-full flex items-center justify-center text-sm text-muted-foreground font-mono">
               <div className="text-center">
                 <MessageCircle className="h-8 w-8 mx-auto mb-3 text-muted-foreground/40" />
