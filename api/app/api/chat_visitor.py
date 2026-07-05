@@ -120,19 +120,6 @@ async def post_message(
     msg = await send_message(
         db, conversation=convo, sender="visitor", content=payload.content
     )
-    await db.commit()
-
-    out = MessageOut(**message_to_out_shape(msg))
-
-    manager = get_connection_manager()
-    await manager.publish_message(
-        convo.id,
-        {
-            "type": "message",
-            "conversation_id": str(convo.id),
-            "message": out.model_dump(mode="json"),
-        },
-    )
     
     submission = (
         await db.execute(
@@ -147,7 +134,21 @@ async def post_message(
     if submission and submission.name_encrypted:
         from ..core.crypto import decrypt_field
         visitor_name = decrypt_field(submission.name_encrypted)
+        
+    await db.commit()
 
+    out = MessageOut(**message_to_out_shape(msg))
+
+    manager = get_connection_manager()
+    await manager.publish_message(
+        convo.id,
+        {
+            "type": "message",
+            "conversation_id": str(convo.id),
+            "message": out.model_dump(mode="json"),
+        },
+    )
+    
     notify_visitor_message(
         conversation_id=str(convo.id),
         visitor_name=visitor_name,

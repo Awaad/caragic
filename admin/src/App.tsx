@@ -8,6 +8,7 @@ import { SubmissionDetailPage } from "@/features/submissions/SubmissionDetailPag
 import { TokensListPage } from "@/features/tokens/TokensListPage";
 import { ModesListPage } from "@/features/modes/ModesListPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { ChatsPage } from "@/features/chats/ChatsPage";
 
 export default function App() {
   return (
@@ -28,6 +29,8 @@ export default function App() {
         <Route path="/tokens" element={<TokensListPage />} />
         <Route path="/modes" element={<ModesListPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/chats" element={<ChatsPage />} />
+        <Route path="/chats/:id" element={<ChatsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

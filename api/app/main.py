@@ -94,6 +94,7 @@ app.include_router(submission_routes.router, prefix="/api")
 app.include_router(verify_routes.router, prefix="/api")
 app.include_router(chat_visitor_routes.router, prefix="/api")
 app.include_router(chat_admin_routes.router, prefix="/api")
+app.include_router(chat_admin_routes.ws_router, prefix="/api")
 app.include_router(visitor_routes.router)
 
 @app.get("/api/health")

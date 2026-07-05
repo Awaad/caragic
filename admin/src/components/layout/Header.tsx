@@ -4,6 +4,7 @@ import { LogOut, User, Menu } from "lucide-react";
 import { useWhoAmI, useLogout } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { ActiveModeSwitcher } from "./ActiveModeSwitcher";
+import { OwnerStatusSwitcher } from "./OwnerStatusSwitcher";
 
 
 
@@ -53,6 +54,7 @@ export function Header({
 
         {/* Right — mode + user */}
         <div className="flex items-center gap-2 md:gap-4">
+          <OwnerStatusSwitcher />
           <ActiveModeSwitcher />
 
           <div className="relative" ref={menuRef}>

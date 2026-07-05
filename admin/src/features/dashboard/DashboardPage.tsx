@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
-import { useSubmissionsList, useActiveMode, useTokensList, useSubmissionStats, } from "@/api/hooks";
-import { Inbox, ChevronRight, Layers, Link2 } from "lucide-react";
+import { useAdminConversations, useActiveMode, useTokensList, useSubmissionStats, } from "@/api/hooks";
+import { Inbox, ChevronRight, Layers, Link2, MessageCircle } from "lucide-react";
 
 export function DashboardPage() {
   const stats = useSubmissionStats();
   const activeMode = useActiveMode();
   const activeTokens = useTokensList({ statuses: ["active"] });
+  const unreadChats = useAdminConversations(true);
+
 
   return (
     <div className="animate-fade-in">
@@ -16,7 +18,7 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           to="/submissions?status=pending"
           icon={Inbox}
@@ -43,6 +45,18 @@ export function DashboardPage() {
           label="active mode"
           mono
         />
+
+        <StatCard
+          to="/chats"
+          icon={MessageCircle}
+          value={
+            unreadChats.isLoading
+              ? "—"
+              : String(unreadChats.data?.conversations.length ?? 0)
+          }
+          label="unread chats"
+        />
+
       </div>
     </div>
   );

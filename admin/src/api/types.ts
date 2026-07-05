@@ -6,6 +6,8 @@ export interface WhoAmIResponse {
 // Modes
 export type ModeStatus = "active" | "inactive" | "archived";
 
+export type OwnerStatus = "available" | "away" | "busy" | "offline";
+
 export interface ModeSummary {
   id: string;
   name: string;
@@ -149,4 +151,43 @@ export interface TestNotificationRequest {
 export interface TestNotificationResponse {
   success: boolean;
   message: string;
+}
+
+
+export interface OwnerStatusOut {
+  status: OwnerStatus;
+  updated_at: string | null;
+}
+
+export interface AdminConversationSummary {
+  id: string;
+  visitor_id: string;
+  kind: "instant" | "ai";
+  status: "open" | "closed" | "archived";
+  created_at: string;
+  last_message_at: string | null;
+  unread_by_owner: boolean;
+  owner_receipts_enabled: boolean;
+  last_message_preview: string | null;
+  last_message_sender: string | null;
+}
+
+export interface AdminConversationListResponse {
+  conversations: AdminConversationSummary[];
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender: "visitor" | "owner" | "ai" | "system";
+  content_type: "text" | "image" | "file" | "system";
+  content: string;
+  content_metadata: Record<string, unknown>;
+  created_at: string;
+  read_by_recipient_at: string | null;
+}
+
+export interface MessageListResponse {
+  messages: ChatMessage[];
+  next_cursor: string | null;
 }

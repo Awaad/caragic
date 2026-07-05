@@ -17,6 +17,11 @@ import type {
   ActiveModeResponse,
   ModeListResponse,
   AdminSubmissionStatsResponse,
+  OwnerStatusOut,
+  OwnerStatus,
+  AdminConversationListResponse,
+  ChatMessage,
+  MessageListResponse,
 } from "./types";
 
 
@@ -333,6 +338,100 @@ export function useSetActiveMode() {
       }),
     onSuccess: (data) => {
       qc.setQueryData(["active-mode"], data);
+    },
+  });
+}
+
+
+
+export function useAdminConversations(unreadOnly = false) {
+  const p = new URLSearchParams();
+  if (unreadOnly) p.set("unread_only", "true");
+  return useQuery({
+    queryKey: ["admin-conversations", unreadOnly],
+    queryFn: () =>
+      apiFetch<AdminConversationListResponse>(
+        `/admin/chat/conversations${p.toString() ? `?${p}` : ""}`,
+      ),
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useAdminMessages(id: string | undefined, beforeId?: string) {
+  const p = new URLSearchParams();
+  p.set("limit", "50");
+  if (beforeId) p.set("before_id", beforeId);
+  return useQuery({
+    queryKey: ["admin-messages", id, beforeId],
+    queryFn: () =>
+      apiFetch<MessageListResponse>(
+        `/admin/chat/conversations/${id}/messages?${p.toString()}`,
+      ),
+    enabled: !!id,
+    staleTime: 0,
+  });
+}
+
+export function useAdminSendMessage(id: string | undefined) {
+  return useMutation<{ message: ChatMessage }, Error, { content: string }>({
+    mutationFn: (body) =>
+      apiFetch<{ message: ChatMessage }>(
+        `/admin/chat/conversations/${id}/messages`,
+        { method: "POST", body },
+      ),
+  });
+}
+
+export function useAdminMarkRead(id: string | undefined) {
+  return useMutation<{ marked: number }, Error, { message_ids: string[] }>({
+    mutationFn: (body) =>
+      apiFetch<{ marked: number }>(
+        `/admin/chat/conversations/${id}/read`,
+        { method: "POST", body },
+      ),
+  });
+}
+
+export function useAdminTyping(id: string | undefined) {
+  return useMutation<{ ok: boolean }, Error, { is_typing: boolean }>({
+    mutationFn: ({ is_typing }) =>
+      apiFetch<{ ok: boolean }>(
+        `/admin/chat/conversations/${id}/typing?is_typing=${is_typing}`,
+        { method: "POST" },
+      ),
+  });
+}
+
+export function useToggleReceipts(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation<any, Error, { enabled: boolean }>({
+    mutationFn: (body) =>
+      apiFetch(
+        `/admin/chat/conversations/${id}/receipts`,
+        { method: "POST", body },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-conversations"] });
+    },
+  });
+}
+
+export function useOwnerStatus() {
+  return useQuery({
+    queryKey: ["owner-status"],
+    queryFn: () => apiFetch<OwnerStatusOut>("/admin/chat/status"),
+    staleTime: 30_000,
+  });
+}
+
+export function useSetOwnerStatus() {
+  const qc = useQueryClient();
+  return useMutation<OwnerStatusOut, Error, { status: OwnerStatus }>({
+    mutationFn: (body) =>
+      apiFetch<OwnerStatusOut>("/admin/chat/status", { method: "PUT", body }),
+    onSuccess: (data) => {
+      qc.setQueryData(["owner-status"], data);
     },
   });
 }

@@ -42,6 +42,8 @@ from ..schemas.chat import (
 
 router = APIRouter(prefix="/admin/chat", tags=["admin-chat"])
 
+ws_router = APIRouter(prefix="/admin/chat", tags=["admin-chat-ws"])
+
 
 def _preview(text: str, n: int = 80) -> str:
     text = text.replace("\n", " ").strip()
@@ -206,7 +208,7 @@ async def admin_stream(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     # Cookie auth — reuse the owner cookie
-    from ..core.owner_auth import decode_owner_token
+    from ..core.owner_auth import decode_admin_token
     from ..config import get_settings
     settings = get_settings()
 
@@ -215,7 +217,7 @@ async def admin_stream(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="unauth")
         return
     try:
-        decode_owner_token(cookie)
+        decode_admin_token(cookie)
     except Exception:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="unauth")
         return

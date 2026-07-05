@@ -7,12 +7,15 @@ import {
   Settings,
   Sparkles,
   X,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubmissionStats } from "@/api/hooks";
+import { useAdminConversations } from "@/api/hooks";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/chats", label: "Chats", icon: MessageCircle },
   { to: "/submissions", label: "Submissions", icon: Inbox },
   { to: "/tokens", label: "Tokens", icon: Link2 },
   { to: "/modes", label: "Modes", icon: Layers },
@@ -85,6 +88,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
               <Icon className="h-4 w-4" strokeWidth={2} />
               <span className="flex-1">{label}</span>
               {to === "/submissions" && <PendingPill />}
+              {to === "/chats" && <ChatUnreadPill />}
             </NavLink>
           ))}
         </nav>
@@ -106,6 +110,16 @@ function PendingPill() {
   return (
     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary tabular-nums">
       {data.pending}
+    </span>
+  );
+}
+
+function ChatUnreadPill() {
+  const { data } = useAdminConversations(true);
+  if (!data || data.conversations.length === 0) return null;
+  return (
+    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary tabular-nums">
+      {data.conversations.length}
     </span>
   );
 }
