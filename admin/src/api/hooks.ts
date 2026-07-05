@@ -344,6 +344,60 @@ export function useSetActiveMode() {
 
 
 
+export function useModes(statuses?: string[]) {
+  return useQuery({
+    queryKey: ["admin-modes", statuses ?? []],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      (statuses ?? []).forEach((s) => params.append("status", s));
+      const qs = params.toString();
+      const res = await fetch(
+        `/api/admin/modes${qs ? `?${qs}` : ""}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("failed to load modes");
+      return (await res.json()) as ModeListResponse;
+    },
+  });
+}
+
+export function useTransitionModeStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: {
+      name: string;
+      status: "active" | "inactive" | "archived";
+    }) => {
+      const res = await fetch(`/api/admin/modes/${v.name}/status`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: v.status }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-modes"] }),
+  });
+}
+
+export function usePurgeMode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { name: string }) => {
+      const res = await fetch(
+        `/api/admin/modes/${v.name}?confirm=true`,
+        { method: "DELETE", credentials: "include" },
+      );
+      if (!res.ok) throw new Error(await res.text());
+      return null;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-modes"] }),
+  });
+}
+
+
+
 export function useAdminConversations(unreadOnly = false) {
   const p = new URLSearchParams();
   if (unreadOnly) p.set("unread_only", "true");
