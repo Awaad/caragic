@@ -412,6 +412,69 @@ export function usePurgeMode() {
 }
 
 
+// Update / create
+
+interface UpdateModeContentRequest {
+  rounds: Array<{
+    slug: string;
+    round_type: "choice" | "capture";
+    data: unknown;
+  }>;
+  reveal: {
+    name: string;
+    tagline: string;
+    links: Array<{ label: string; url: string }>;
+  };
+}
+
+interface CreateModeRequestBody extends UpdateModeContentRequest {
+  name: string;
+}
+
+export function useUpdateMode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: {
+      name: string;
+      payload: UpdateModeContentRequest;
+    }) => {
+      const res = await fetch(`/api/admin/modes/${v.name}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(v.payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return (await res.json()) as ModeDetail;
+    },
+    onSuccess: (data) => {
+      qc.setQueryData(["admin-mode-detail", data.name], data);
+      qc.invalidateQueries({ queryKey: ["admin-modes"] });
+      qc.invalidateQueries({ queryKey: ["modes"] });
+    },
+  });
+}
+
+export function useCreateMode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreateModeRequestBody) => {
+      const res = await fetch(`/api/admin/modes`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-modes"] });
+      qc.invalidateQueries({ queryKey: ["modes"] });
+    },
+  });
+}
+
 
 export function useAdminConversations(unreadOnly = false) {
   const p = new URLSearchParams();

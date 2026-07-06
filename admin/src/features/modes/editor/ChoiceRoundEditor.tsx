@@ -1,10 +1,15 @@
+import { Plus } from "lucide-react";
 import type { EditorChoiceData, EditorOption } from "./types";
 import { OptionEditor } from "./OptionEditor";
+import { newOption } from "./types";
 
 interface Props {
   value: EditorChoiceData;
   onChange: (next: EditorChoiceData) => void;
 }
+
+const MIN_OPTIONS = 2;
+const MAX_OPTIONS = 4;
 
 export function ChoiceRoundEditor({ value, onChange }: Props) {
   const patchOption = (i: number, next: EditorOption) => {
@@ -13,6 +18,20 @@ export function ChoiceRoundEditor({ value, onChange }: Props) {
       options: value.options.map((o, idx) => (idx === i ? next : o)),
     });
   };
+
+  const removeOption = (i: number) => {
+    onChange({
+      ...value,
+      options: value.options.filter((_, idx) => idx !== i),
+    });
+  };
+
+  const addOption = () => {
+    onChange({ ...value, options: [...value.options, newOption()] });
+  };
+
+  const canRemove = value.options.length > MIN_OPTIONS;
+  const canAdd = value.options.length < MAX_OPTIONS;
 
   return (
     <div className="space-y-4">
@@ -33,16 +52,27 @@ export function ChoiceRoundEditor({ value, onChange }: Props) {
       </div>
       <div className="space-y-2">
         <div className="text-xs text-muted-foreground">
-          options ({value.options.length} / 4)
+          options ({value.options.length} / {MAX_OPTIONS})
         </div>
         {value.options.map((o, i) => (
           <OptionEditor
             key={o.id}
             value={o}
             onChange={(next) => patchOption(i, next)}
+            onRemove={() => removeOption(i)}
+            canRemove={canRemove}
             index={i}
           />
         ))}
+        <button
+          type="button"
+          onClick={addOption}
+          disabled={!canAdd}
+          className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          add option
+        </button>
       </div>
     </div>
   );

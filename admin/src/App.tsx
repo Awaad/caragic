@@ -10,6 +10,10 @@ import { ModesListPage } from "@/features/modes/ModesListPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { ChatsPage } from "@/features/chats/ChatsPage";
 import { ModeDetailPage } from "./features/modes/ModeDetailPage";
+import { ModeEditPage } from "./features/modes/ModeEditPage";
+import { ModeCreatePage } from "./features/modes/ModeCreatePage";
+
+
 
 export default function App() {
   return (
@@ -29,7 +33,9 @@ export default function App() {
         <Route path="/submissions/:id" element={<SubmissionDetailPage />} />
         <Route path="/tokens" element={<TokensListPage />} />
         <Route path="/modes" element={<ModesListPage />} />
+        <Route path="/modes/new" element={<ModeCreatePage />} />
         <Route path="/modes/:name" element={<ModeDetailPage />} />
+        <Route path="/modes/:name/edit" element={<ModeEditPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/chats" element={<ChatsPage />} />
         <Route path="/chats/:id" element={<ChatsPage />} />

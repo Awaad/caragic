@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronRight, Filter, ChevronDown } from "lucide-react";
+import { ChevronRight, Filter, ChevronDown, Plus } from "lucide-react";
 import { useModes, useTransitionModeStatus, usePurgeMode } from "@/api/hooks";
 import { ModeStatusBadge } from "./ModeStatusBadge";
 import { cn } from "@/lib/utils";
 
 /**
- * Modes inbox. Read + status transitions today; the editor for a mode's
- * rounds/reveal lives on the detail page (commit 3) and gains an edit
- * mode next session.
+ * Modes inbox. Read + status transitions, the editor for a mode's
+ * rounds/reveal lives on the detail page and have edit
  *
  * "Show archived" is a toggle rather than a full multi-select filter —
  * modes are few, filtering is overkill.
@@ -47,6 +46,13 @@ export function ModesListPage() {
           />
           show archived
         </label>
+        <Link
+            to="/modes/new"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded border border-primary/40 bg-primary/10 text-sm text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            new mode
+        </Link>
       </div>
 
       <div className="rounded-lg border border-border bg-card/40 overflow-hidden">

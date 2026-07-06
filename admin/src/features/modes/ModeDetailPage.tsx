@@ -1,5 +1,12 @@
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Hash, MessageSquare, UserPlus, Sparkles } from "lucide-react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import {
+  ArrowLeft,
+  Hash,
+  MessageSquare,
+  UserPlus,
+  Sparkles,
+  Pencil,
+} from "lucide-react";
 import { useModeDetail } from "@/api/hooks";
 import { ModeStatusBadge } from "./ModeStatusBadge";
 import type {
@@ -12,10 +19,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * Read-only view of a mode's full content: header + rounds + reveal.
- *
- * The edit affordance is intentionally absent — inline editing is a
- * separate feature. This page is complete on its own as
- * an inspector for what the visitor sees.
+ * Edit affordance links to /modes/:name/edit — the editor is a
+ * separate page rather than an inline toggle to keep this view
+ * uncluttered and give edits a clean route boundary (browser back
+ * naturally discards).
  */
 export function ModeDetailPage() {
   const { name } = useParams<{ name: string }>();
@@ -72,6 +79,13 @@ export function ModeDetailPage() {
             updated {new Date(data.updated_at).toLocaleString()}
           </p>
         </div>
+        <Link
+          to={`/modes/${data.name}/edit`}
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded border border-primary/40 bg-primary/10 text-sm text-primary hover:bg-primary/20 transition-colors"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          edit
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -98,8 +112,14 @@ export function ModeDetailPage() {
 
           <Card title="Trace">
             <TraceField label="mode id" value={data.id} />
-            <TraceField label="created" value={new Date(data.created_at).toLocaleString()} />
-            <TraceField label="updated" value={new Date(data.updated_at).toLocaleString()} />
+            <TraceField
+              label="created"
+              value={new Date(data.created_at).toLocaleString()}
+            />
+            <TraceField
+              label="updated"
+              value={new Date(data.updated_at).toLocaleString()}
+            />
           </Card>
         </div>
       </div>
@@ -249,7 +269,10 @@ function TraceField({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/60 mb-0.5">
         {label}
       </div>
-      <div className="text-xs font-mono text-foreground truncate" title={value}>
+      <div
+        className="text-xs font-mono text-foreground truncate"
+        title={value}
+      >
         {value}
       </div>
     </div>

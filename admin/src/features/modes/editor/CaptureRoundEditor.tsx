@@ -14,7 +14,9 @@ export function CaptureRoundEditor({ value, onChange }: Props) {
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs text-muted-foreground mb-1">prompt</label>
+        <label className="block text-xs text-muted-foreground mb-1">
+          prompt
+        </label>
         <textarea
           value={value.prompt}
           onChange={(e) => patch("prompt", e.target.value)}
