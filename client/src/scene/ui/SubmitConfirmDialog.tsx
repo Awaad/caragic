@@ -29,7 +29,7 @@ export function SubmitConfirmDialog({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 30,
+        zIndex: 300,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

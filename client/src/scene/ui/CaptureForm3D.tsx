@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { Html } from "@react-three/drei";
 import { useFlow } from "../../flow/useFlow";
 import { useContent } from "../../api/hooks";
 import { useSubmitCapture } from "../../api/mutations";
 import { PanelFrame } from "./PanelFrame";
 import { TypewriterText } from "./TypewriterText";
-import { CaragicPhoneInput } from "../../components/PhoneInput";
+import { CaptureFormOverlay } from "./CaptureFormOverlay";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
 import type { Mode } from "../../modes/types";
-
+import { useFlowPersistStore } from "../../flow/persistStore";
 import { useModalStore } from "../../components/modal/modalStore";
+
+
 
 function getAccentColors(mode: Mode): { primary: string; secondary: string } {
   switch (mode) {
@@ -33,27 +34,25 @@ const BUTTON_WIDTH = 2.0;
 const BUTTON_HEIGHT = 0.42;
 const HEADER_Y = 0.85;
 const RECONSIDER_HEADER_TEXT = "changed your mind?";
-const RECONSIDER_SUB_TEXT = "\nI saved a spot for you.";
+const RECONSIDER_SUB_TEXT = "I saved a spot for you.";
 
 export function CaptureFormPanel() {
   const { phase, mode, roundIndex, answers, setPhase, lastOutcome } = useFlow();
   const responsiveScale = useResponsiveScale();
   const { data: content } = useContent();
 
+  const setSubmitConfirmPending = useModalStore((s) => s.setSubmitConfirmPending);
+  const openSubmitConfirm = useModalStore((s) => s.openSubmitConfirm);
+  const closeSubmitConfirm = useModalStore((s) => s.closeSubmitConfirm);
+
   const submit = useSubmitCapture();
 
-  // instead of the standard choice. Distinct copy makes the second visit
-  // feel deliberate, not like the visitor is looping through the same UI.
   const [step, setStep] = useState<
     "choice" | "reconsider" | "form" | "declined"
   >(lastOutcome === "declined" ? "reconsider" : "choice");
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-
-  const openSubmitConfirm = useModalStore((s) => s.openSubmitConfirm);
-  const setSubmitConfirmPending = useModalStore((s) => s.setSubmitConfirmPending);
-  const closeSubmitConfirm = useModalStore((s) => s.closeSubmitConfirm);
 
   if (phase !== "capturing") return null;
   if (!content) return null;
@@ -62,13 +61,32 @@ export function CaptureFormPanel() {
   if (!round || round.type !== "capture") return null;
 
   const { prompt, acceptLabel, declineLabel, declineMessage } = round.data;
-
   const { primary: accent, secondary } = getAccentColors(mode);
 
-  // Both required, phone must parse as valid E.164 (client-side check;
-  // server re-validates as authoritative)
   const phoneValid = phoneNumber ? isValidPhoneNumber(phoneNumber) : false;
-  const canSubmit = name.trim().length > 0 && phoneValid && !submit.isPending;
+  const canSubmit =
+    name.trim().length > 0 && phoneValid && !submit.isPending;
+
+  const doSubmit = async () => {
+    try {
+      await submit.mutateAsync({
+        outcome: "submitted",
+        name: name.trim(),
+        phone: phoneNumber,
+        answers: answers.map((a) => ({
+          round_id: a.roundId,
+          option_id: a.optionId,
+        })),
+      });
+      closeSubmitConfirm();
+      setPhase("reveal");
+    } catch {
+      setSubmitConfirmPending(false);
+      // Modal closes; overlay's inline error surface (submit.isError)
+      // shows the message. User can re-submit → re-confirm.
+      //closeSubmitConfirm();
+    }
+  };
 
   const openConfirm = () => {
     if (!canSubmit) return;
@@ -81,34 +99,7 @@ export function CaptureFormPanel() {
     });
   };
 
-  const doSubmit = () => {
-    setSubmitConfirmPending(true);
-    submit.mutate(
-      {
-        outcome: "submitted",
-        name: name.trim(),
-        phone: phoneNumber,
-        answers: answers.map((a) => ({
-          round_id: a.roundId,
-          option_id: a.optionId,
-        })),
-      },
-      {
-        onSuccess: () => {
-          closeSubmitConfirm();
-          setPhase("reveal");
-        },
-        onError: () => {
-          setSubmitConfirmPending(false);
-        },
-      },
-    );
-  };
-
   const handleDecline = () => {
-    // Fire-and-forget — don't await, don't block the UI on the request.
-    // The server logs the decline for the admin funnel; visitor sees the
-    // goodbye message immediately.
     submit.mutate({
       outcome: "declined",
       answers: answers.map((a) => ({
@@ -119,9 +110,15 @@ export function CaptureFormPanel() {
     setStep("declined");
   };
 
+  const handleEraseData = () => {
+    useFlowPersistStore.getState().clear();
+    setPhase("opening");
+  };
+
   return (
     <group scale={responsiveScale}>
-      {/* Header */}
+      {/* 3D header — hidden when the form overlay is up, since the
+          overlay carries its own prompt line and covers the scene. */}
       <PanelFrame
         width={HEADER_WIDTH}
         height={HEADER_HEIGHT}
@@ -129,19 +126,18 @@ export function CaptureFormPanel() {
           step === "declined"
             ? declineMessage
             : step === "reconsider"
-              ? RECONSIDER_HEADER_TEXT + RECONSIDER_SUB_TEXT
+              ? RECONSIDER_HEADER_TEXT
               : prompt
         }
         textSize={0.085}
         position={[0, HEADER_Y, 1.2]}
         rotation={[-0.08, 0.18, 0]}
-        visible
+        visible={step !== "form"}
         accentColor={accent}
         accentColorSecondary={secondary}
         variant="header"
       />
 
-      {/* Choice step — accept or decline */}
       {step === "reconsider" && (
         <>
           <PanelFrame
@@ -170,8 +166,22 @@ export function CaptureFormPanel() {
             selected
             onClick={() => setStep("form")}
           />
+          <PanelFrame
+            width={BUTTON_WIDTH}
+            height={BUTTON_HEIGHT}
+            text="erase my data"
+            textSize={0.055}
+            position={[0, -0.65, 1.2]}
+            rotation={[-0.08, 0.22, 0]}
+            visible
+            accentColor={accent}
+            accentColorSecondary={secondary}
+            variant="choice"
+            onClick={handleEraseData}
+          />
         </>
       )}
+
       {step === "choice" && (
         <>
           <PanelFrame
@@ -204,80 +214,22 @@ export function CaptureFormPanel() {
         </>
       )}
 
-      {/* Form step — name + number inputs */}
       {step === "form" && (
-        <>
-          {/* Inputs via Html overlay positioned where a panel would sit */}
-          <Html
-            transform
-            position={[0, -0.15, 1.2]}
-            rotation={[-0.08, 0.22, 0]}
-            distanceFactor={4.5}
-            style={{
-              width: "min(360px, 78vw)",
-              pointerEvents: "auto",
-            }}
-            zIndexRange={[20, 0]}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-                padding: 16,
-                background: "rgba(5, 2, 26, 0.85)",
-                border: `1.5px solid ${accent}`,
-                borderRadius: 8,
-                boxShadow: `0 0 24px ${accent}, inset 0 0 12px rgba(${hexToRgb(accent)}, 0.15)`,
-              }}
-            >
-              <input
-                type="text"
-                placeholder="your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={inputStyle(accent)}
-                autoComplete="given-name"
-              />
-              <CaragicPhoneInput
-                value={phoneNumber}
-                onChange={setPhoneNumber}
-                accent={accent}
-                disabled={submit.isPending}
-              />
-
-              {/* Error surface — only shows after a failed attempt */}
-              {submit.isError && (
-                <div
-                  style={{
-                    color: "#ff6688",
-                    fontSize: 12,
-                    fontFamily: "monospace",
-                    padding: "4px 2px",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  {submit.error?.message ?? "something broke. try again."}
-                </div>
-              )}
-
-              <button
-                onClick={openConfirm}
-                disabled={!canSubmit}
-                style={{
-                  ...submitButtonStyle(accent),
-                  opacity: canSubmit ? 1 : 0.4,
-                  cursor: canSubmit ? "pointer" : "not-allowed",
-                }}
-              >
-                {submit.isPending ? "sending..." : "send"}
-              </button>
-            </div>
-          </Html>
-        </>
+        <CaptureFormOverlay
+          accent={accent}
+          prompt={prompt}
+          name={name}
+          onNameChange={setName}
+          phoneNumber={phoneNumber}
+          onPhoneChange={setPhoneNumber}
+          canSubmit={canSubmit}
+          isPending={submit.isPending}
+          isError={submit.isError}
+          errorMessage={submit.error?.message}
+          onSubmit={openConfirm}
+        />
       )}
 
-      {/* Declined step — just the message in the header, with a typewriter farewell */}
       {step === "declined" && (
         <group position={[0, -0.1, 1.3]} rotation={[-0.08, 0.18, 0]}>
           <TypewriterText
@@ -290,46 +242,6 @@ export function CaptureFormPanel() {
           />
         </group>
       )}
-
     </group>
   );
-}
-
-function inputStyle(accent: string): React.CSSProperties {
-  return {
-    padding: "12px 14px",
-    background: "rgba(0, 0, 0, 0.4)",
-    border: `1px solid ${accent}88`,
-    borderRadius: 4,
-    color: "white",
-    fontSize: 15,
-    fontFamily: "monospace",
-    outline: "none",
-    letterSpacing: 0.5,
-    boxShadow: `inset 0 0 8px rgba(0,0,0,0.5)`,
-  };
-}
-
-function submitButtonStyle(accent: string): React.CSSProperties {
-  return {
-    padding: "12px 14px",
-    background: "transparent",
-    border: `1.5px solid ${accent}`,
-    borderRadius: 4,
-    color: accent,
-    fontSize: 14,
-    fontFamily: "monospace",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    fontWeight: 600,
-    boxShadow: `0 0 12px ${accent}88`,
-  };
-}
-
-function hexToRgb(hex: string): string {
-  const clean = hex.replace("#", "");
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return `${r}, ${g}, ${b}`;
 }
