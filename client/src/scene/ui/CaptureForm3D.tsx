@@ -7,26 +7,12 @@ import { TypewriterText } from "./TypewriterText";
 import { CaptureFormOverlay } from "./CaptureFormOverlay";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
-import type { Mode } from "../../modes/types";
+
 import { useFlowPersistStore } from "../../flow/persistStore";
 import { useModalStore } from "../../components/modal/modalStore";
+import { getAccentColors } from "../../modes/accents";
 
 
-
-function getAccentColors(mode: Mode): { primary: string; secondary: string } {
-  switch (mode) {
-    case "dating":
-      return { primary: "#ff3ad8", secondary: "#00e5ff" };
-    case "friendship":
-      return { primary: "#3aeae0", secondary: "#b14aff" };
-    case "professional":
-      return { primary: "#3a8aff", secondary: "#2ee6ff" };
-    case "mix":
-      return { primary: "#c060d8", secondary: "#3affd0" };
-    default:
-      return { primary: "#88aaff", secondary: "#46f0ff" };
-  }
-}
 
 const HEADER_WIDTH = 2.4;
 const HEADER_HEIGHT = 0.55;

@@ -27,16 +27,17 @@ export function ChatCTA() {
         boxShadow: "0 0 20px rgba(127, 170, 255, 0.25)",
         pointerEvents: "auto",
         transition: "all 0.2s",
+        zIndex: 90000,
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(127, 170, 255, 0.22)";
+        e.currentTarget.style.background = "rgba(90, 170, 255, 0.22)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "rgba(127, 170, 255, 0.12)";
       }}
     >
       <MessageCircle size={14} />
-      chat
+      chat now
     </Link>
   );
 }
