@@ -1,4 +1,4 @@
-export type Mode = 'dating' | 'friendship' | 'professional' | 'mix';
+export type Mode = string;
 
 export type RoundType = 'choice' | 'capture';
 
