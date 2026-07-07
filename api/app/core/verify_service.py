@@ -101,7 +101,7 @@ async def check_verification_and_bind(
         raise HTTPException(status_code=422, detail=str(exc))
 
     try:
-        result = await check_verification(verification_id, code)
+        result = await check_verification(verification_id, code, e164)
     except OtpProviderError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

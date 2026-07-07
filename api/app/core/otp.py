@@ -106,7 +106,7 @@ async def start_verification(phone_e164: str) -> OtpStartResult:
 
 
 async def check_verification(
-    verification_id: str, code: str
+    verification_id: str, code: str, phone_e164: str,
 ) -> OtpCheckResult:
     settings = get_settings()
 
@@ -129,7 +129,10 @@ async def check_verification(
                     "Authorization": f"Bearer {settings.prelude_api_token}",
                     "Content-Type": "application/json",
                 },
-                json={"verification_id": verification_id, "code": code},
+                json={
+                    "target": {"type": "phone_number", "value": phone_e164},
+                    "code": code,
+                },
             )
     except httpx.HTTPError as exc:
         logger.exception("prelude check failed (network)")
