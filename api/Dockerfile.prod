@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock* ./
+
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
+RUN uv sync --frozen --no-install-project --no-dev
+
+COPY . .
+
+RUN uv sync --frozen --no-dev
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+# Prod: multiple workers, no --reload. 
+# cores; 2 is fine for a KVM 1 with 1-2 vCPU. Uvicorn workers use
+# processes, not threads — real parallelism for async workloads.
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "2", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]
