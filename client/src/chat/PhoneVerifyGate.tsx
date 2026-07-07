@@ -13,6 +13,8 @@ export function PhoneVerifyGate() {
   const persistedPhone = useFlowPersistStore((s) => s.lastPhone);
   const [phone, setPhone] = useState(persistedPhone ?? "");
   const [verificationId, setVerificationId] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
+  const [resendTick, setResendTick] = useState(0);
   const [code, setCode] = useState("");
 
   const start = useStartVerification();
@@ -23,6 +25,16 @@ export function PhoneVerifyGate() {
   }, [persistedPhone]);
 
   const phoneValid = phone ? isValidPhoneNumber(phone) : false;
+
+  // Start the 30s countdown whenever a new verification is issued.
+  useEffect(() => {
+    if (!verificationId) return;
+    setResendIn(30);
+    const interval = setInterval(() => {
+      setResendIn((n) => (n <= 1 ? 0 : n - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [verificationId, resendTick]);
 
   const handleSendCode = () => {
     if (!phoneValid) return;
@@ -36,6 +48,21 @@ export function PhoneVerifyGate() {
       },
     );
   };
+
+  const handleResend = () => {
+    if (resendIn > 0 || !phoneValid) return;
+    start.mutate(
+      { phone },
+      {
+        onSuccess: (data) => {
+          setVerificationId(data.verification_id);
+          setCode("");
+          setResendTick((n) => n + 1); 
+        },
+      },
+    );
+  };
+
 
   const handleCheck = () => {
     console.log("phone at check:", phone, typeof phone);
@@ -65,7 +92,7 @@ export function PhoneVerifyGate() {
             marginBottom: 12,
           }}
         >
-          — Caragic —
+          — Awad Says Hey  ✌️—
         </div>
         <h1
           style={{
@@ -140,9 +167,13 @@ export function PhoneVerifyGate() {
                 pattern="[0-9]{6}"
                 maxLength={6}
                 value={code}
-                onChange={(e) =>
-                  setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                }
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setCode(v);
+                  if (v.length === 6 && verificationId && !check.isPending) {
+                    check.mutate({ verification_id: verificationId, code: v, phone });
+                  }
+                }}
                 placeholder="000000"
                 autoFocus
                 style={{
@@ -175,6 +206,30 @@ export function PhoneVerifyGate() {
             >
               {check.isPending ? "verifying…" : "verify"}
             </button>
+
+            <button
+              onClick={handleResend}
+              disabled={resendIn > 0 || start.isPending || check.isPending}
+              style={{
+                background: "transparent",
+                border: "none",
+                color:
+                  resendIn > 0 ? "rgba(200,200,220,0.3)" : "rgba(180, 210, 255, 0.75)",
+                fontSize: 11,
+                fontFamily: "monospace",
+                cursor: resendIn > 0 ? "not-allowed" : "pointer",
+                letterSpacing: 1,
+                padding: 0,
+                marginTop: 4,
+              }}
+            >
+              {resendIn > 0
+                ? `resend in ${resendIn}s`
+                : start.isPending
+                  ? "sending…"
+                  : "resend code"}
+            </button>
+
             <button
               onClick={() => {
                 setStep("phone");
