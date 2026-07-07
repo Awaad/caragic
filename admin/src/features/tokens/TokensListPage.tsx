@@ -337,7 +337,6 @@ function TokenRow({ token }: { token: TokenSummary }) {
 }
 
 function ConfirmChip({
-  target,
   onConfirm,
   onCancel,
   isPending,
