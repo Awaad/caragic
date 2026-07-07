@@ -24,7 +24,7 @@ export interface WarpProgress {
  * Consumers should read .t, .velocity, etc. inside their own useFrame.
  */
 export function useWarpProgress(): WarpProgress {
-  const { phase, hasWarpedBefore, setPhase, pendingArrivalPhase, setPendingArrivalPhase } = useFlow();
+  const { phase, setPhase, pendingArrivalPhase, setPendingArrivalPhase } = useFlow();
   const warpStart = useRef<number | null>(null);
   const isFirstWarp = useRef(false);
   const hasWarpedThisMount = useRef(false);
