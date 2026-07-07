@@ -11,6 +11,7 @@ import { useResponsiveScale } from "../hooks/useResponsiveScale";
 import { useFlowPersistStore } from "../../flow/persistStore";
 import { useModalStore } from "../../components/modal/modalStore";
 import { getAccentColors } from "../../modes/accents";
+import { ProfilePreviewOverlay } from "../../components/overlay/ProfilePreviewOverlay";
 
 
 
@@ -20,7 +21,7 @@ const BUTTON_WIDTH = 2.0;
 const BUTTON_HEIGHT = 0.42;
 const HEADER_Y = 0.85;
 const RECONSIDER_HEADER_TEXT = "changed your mind?";
-const RECONSIDER_SUB_TEXT = "I saved a spot for you.";
+
 
 export function CaptureFormPanel() {
   const { phase, mode, roundIndex, answers, setPhase, lastOutcome } = useFlow();
@@ -39,6 +40,7 @@ export function CaptureFormPanel() {
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [showProfile, setShowProfile] = useState(false);
 
   if (phase !== "capturing") return null;
   if (!content) return null;
@@ -96,10 +98,7 @@ export function CaptureFormPanel() {
     setStep("declined");
   };
 
-  const handleEraseData = () => {
-    useFlowPersistStore.getState().clear();
-    setPhase("opening");
-  };
+  
 
   return (
     <group scale={responsiveScale}>
@@ -129,21 +128,9 @@ export function CaptureFormPanel() {
           <PanelFrame
             width={BUTTON_WIDTH}
             height={BUTTON_HEIGHT}
-            text={RECONSIDER_SUB_TEXT}
-            textSize={0.065}
-            position={[0, 0.35, 1.2]}
-            rotation={[-0.08, 0.22, 0]}
-            visible
-            accentColor={accent}
-            accentColorSecondary={secondary}
-            variant="choice"
-          />
-          <PanelFrame
-            width={BUTTON_WIDTH}
-            height={BUTTON_HEIGHT}
-            text={acceptLabel}
+            text="leave your number"
             textSize={0.07}
-            position={[0, -0.15, 1.2]}
+            position={[0, 0.2, 1.2]}
             rotation={[-0.08, 0.22, 0]}
             visible
             accentColor={accent}
@@ -155,18 +142,27 @@ export function CaptureFormPanel() {
           <PanelFrame
             width={BUTTON_WIDTH}
             height={BUTTON_HEIGHT}
-            text="erase my data"
-            textSize={0.055}
-            position={[0, -0.65, 1.2]}
+            text="who are you?!"
+            textSize={0.07}
+            position={[0, -0.35, 1.2]}
             rotation={[-0.08, 0.22, 0]}
             visible
             accentColor={accent}
             accentColorSecondary={secondary}
             variant="choice"
-            onClick={handleEraseData}
+            onClick={() => setShowProfile(true)}
           />
         </>
       )}
+
+      {showProfile && (
+          <ProfilePreviewOverlay
+            accent={accent}
+            name={content.reveal.name}
+            tagline={content.reveal.tagline}
+            onClose={() => setShowProfile(false)}
+          />
+        )}
 
       {step === "choice" && (
         <>
