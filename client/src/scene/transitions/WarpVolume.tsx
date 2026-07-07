@@ -10,7 +10,7 @@ import { useWarpProgress } from '../../flow/useWarpProgress';
 import { createPointTexture } from '../utils/pointTexture';
 
 
-const POINT_COUNT = 2000;
+const POINT_COUNT = 3500;
 const VOLUME_RADIUS = 8;
 const VOLUME_DEPTH = 60;
 const CAMERA_Z = 5;
@@ -97,7 +97,7 @@ export function WarpVolume() {
       <pointsMaterial
         ref={materialRef}
         color="#ffffff"
-        size={0.18}
+        size={0.40}
         sizeAttenuation
         transparent
         opacity={0}
@@ -105,7 +105,8 @@ export function WarpVolume() {
         depthWrite={false}
         depthTest={false}
         toneMapped={false}
-        alphaMap={pointTexture}
+        map={pointTexture}          
+        alphaTest={0.05}
       />
     </points>
   );

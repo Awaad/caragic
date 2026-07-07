@@ -8,20 +8,65 @@ export function createPointTexture(size = 64): CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    throw new Error('Failed to get 2D context for point texture');
-  }
+  const ctx = canvas.getContext('2d')!;
+  if (!ctx) throw new Error('Failed to get 2D context');
 
-  const center = size / 2;
-  const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
-  gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-  gradient.addColorStop(0.4, 'rgba(255, 255, 255, 0.7)');
-  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  const c = size / 2;
+  ctx.clearRect(0, 0, size, size);
+  ctx.globalCompositeOperation = 'lighter';
 
-  ctx.fillStyle = gradient;
+  // 1. Wide soft bloom — the "atmosphere" of the star. This is what
+  //    makes the pointy shape read as light rather than a sticker.
+  const bloom = ctx.createRadialGradient(c, c, 0, c, c, c * 0.55);
+  bloom.addColorStop(0.0, 'rgba(255,255,255,0.35)');
+  bloom.addColorStop(0.4, 'rgba(255,255,255,0.10)');
+  bloom.addColorStop(1.0, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bloom;
   ctx.fillRect(0, 0, size, size);
 
+  // 2. Needle-thin 6-arm star. High outer/inner ratio (0.95 / 0.08)
+  //    means the arms are spikes, not triangles. Individual rays
+  //    drawn one at a time as thin gradients — this lets each ray
+  //    fade to transparent at its tip.
+  const arms = 6;
+  const armLength = c * 0.9;
+  const armWidth = Math.max(1, size * 0.015);
+
+  ctx.save();
+  ctx.translate(c, c);
+  for (let i = 0; i < arms; i++) {
+    ctx.save();
+    // Alternate arm length so we get a primary cross (long) + secondary
+    // rays (shorter). This is what real stars look like through camera
+    // lenses — main diffraction spikes plus fainter secondaries.
+    const isPrimary = i % 3 === 0;
+    const len = armLength * (isPrimary ? 1.0 : 0.55);
+    const alpha = isPrimary ? 0.9 : 0.55;
+    const width = armWidth * (isPrimary ? 1.0 : 0.7);
+
+    ctx.rotate((i / arms) * Math.PI * 2);
+    const grad = ctx.createLinearGradient(0, 0, len, 0);
+    grad.addColorStop(0.0, `rgba(255,255,255,${alpha})`);
+    grad.addColorStop(0.5, `rgba(255,255,255,${alpha * 0.4})`);
+    grad.addColorStop(1.0, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, -width / 2, len, width);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // 3. Bright hot pinpoint — anchors the arms and gives the center
+  //    a saturated white core.
+  const coreRadius = size * 0.16;
+  const core = ctx.createRadialGradient(c, c, 0, c, c, coreRadius);
+  core.addColorStop(0.0, 'rgba(255,255,255,1)');
+  core.addColorStop(0.5, 'rgba(255,255,255,0.7)');
+  core.addColorStop(1.0, 'rgba(255,255,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.globalCompositeOperation = 'source-over';
+ 
   return new CanvasTexture(canvas);
 }
 

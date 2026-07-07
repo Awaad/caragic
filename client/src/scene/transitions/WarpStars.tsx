@@ -6,10 +6,11 @@ import {
   Float32BufferAttribute,
   type Points,
 } from 'three';
+import { createPointTexture } from '../utils/pointTexture';
 import { useWarpProgress } from '../../flow/useWarpProgress';
 import { useFlow } from '../../flow/useFlow';
 
-const STAR_COUNT = 1500;
+const STAR_COUNT = 2500;
 const STAR_SPREAD = 50;        // cube edge length stars are distributed in
 const STAR_BASE_SPEED = 4;     // idle drift speed
 const STAR_WARP_SPEED = 25;    // peak warp speed
@@ -48,6 +49,8 @@ export function WarpStars() {
   const pointsRef = useRef<Points>(null);
   const warp = useWarpProgress();
   const { phase, roundIndex } = useFlow();
+
+  const pointTexture = useMemo(() => createPointTexture(), []);
 
   const geometry = useMemo(() => {
     const { positions, colors } = createStars();
@@ -105,7 +108,7 @@ export function WarpStars() {
     <points ref={pointsRef} renderOrder={5}  raycast={() => null}>
       <primitive object={geometry} attach="geometry" />
       <pointsMaterial
-        size={0.08}
+        size={0.18}
         sizeAttenuation
         vertexColors
         transparent
@@ -114,6 +117,8 @@ export function WarpStars() {
         depthWrite={false}
         depthTest={false}
         toneMapped={false}
+        map={pointTexture}          // was alphaMap
+        //alphaTest={0.05}
       />
     </points>
   );
