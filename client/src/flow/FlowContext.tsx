@@ -102,10 +102,21 @@ export function FlowProvider({
   }, []);
 
   const recordAnswer = useCallback((roundId: string, optionId: string) => {
-    setState((s) => ({
-      ...s,
-      answers: [...s.answers, { roundId, optionId }],
-    }));
+    setState((s) => {
+      // Idempotent: one answer per roundId. Guards against StrictMode's
+      // double-invocation in dev, and defensively against any future
+      // caller firing twice for the same round.
+      const existing = s.answers.findIndex((a) => a.roundId === roundId);
+      if (existing >= 0) {
+        // Same answer already recorded → no-op (StrictMode case).
+        // Different optionId for the same round → replace (defensive).
+        if (s.answers[existing].optionId === optionId) return s;
+        const next = [...s.answers];
+        next[existing] = { roundId, optionId };
+        return { ...s, answers: next };
+      }
+      return { ...s, answers: [...s.answers, { roundId, optionId }] };
+    });
   }, []);
 
   const markWarpComplete = useCallback(() => {
