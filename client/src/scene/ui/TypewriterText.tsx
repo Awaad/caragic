@@ -49,13 +49,21 @@ export function TypewriterText({
       fontSize={fontSize}
       color={color}
       anchorX="center"
-      anchorY="middle"
+      anchorY="top"
       maxWidth={maxWidth}
       textAlign="center"
-      outlineWidth={0.004}
-      outlineColor={color}
-      outlineOpacity={0.8}
-      //toneMapped={}
+      // Dark outline gives edge separation against the nebula noise;
+      // blur softens it into a halo so text still reads as glowing
+      // rather than stamped.
+      outlineColor="#000000"
+      outlineWidth={0.012}
+      outlineOpacity={0.85}
+      outlineBlur={0.02}
+      // Second stroke on top in accent color adds body weight without
+      // making the letters heavier — text stays elegant but pops.
+      strokeColor={color}
+      strokeWidth={0.001}
+      strokeOpacity={0.6}
     >
       {visibleText}
     </Text>

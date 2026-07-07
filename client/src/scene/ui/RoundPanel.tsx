@@ -5,7 +5,6 @@ import { TypewriterText } from "./TypewriterText";
 import type { Mode } from "../../modes/types";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
 
-console.log("RoundPanel module loaded");
 const HEADER_WIDTH = 2.4;
 const HEADER_HEIGHT = 0.55;
 const CHOICE_WIDTH = 2.0;
@@ -147,9 +146,9 @@ export function RoundPanel() {
         >
           <TypewriterText
             text={selectedOption.revealText}
-            fontSize={0.075}
+            fontSize={0.1}
             color={accent}
-            maxWidth={1.9}
+            maxWidth={2.1}
             charDelay={35}
             startDelay={400}
           />
