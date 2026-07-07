@@ -63,6 +63,7 @@ class _RequestIdFilter(logging.Filter):
 
 
 logging.getLogger().addFilter(_RequestIdFilter())
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 settings = get_settings()
 
