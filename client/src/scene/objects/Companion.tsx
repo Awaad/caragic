@@ -6,12 +6,9 @@ import {
   type Group,
   type Mesh,
   type MeshStandardMaterial,
-  type MeshBasicMaterial,
   type PointLight,
   MathUtils,
   Vector3,
-  AdditiveBlending,
-  DoubleSide,
 } from "three";
 import { Icosahedron } from "@react-three/drei";
 import { useFlow } from "../../flow/useFlow";
@@ -19,7 +16,6 @@ import { useWarpProgress } from "../../flow/useWarpProgress";
 
 const SHARD_COUNT = 5;
 const ORBIT_RADIUS = 0.7;
-const SELECTION_REVEAL_DELAY = 2.5;
 const CORE_EXIT_DURATION = 0.8;
 
 interface ShardConfig {

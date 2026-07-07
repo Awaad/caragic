@@ -8,7 +8,7 @@ import { CaptureFormOverlay } from "./CaptureFormOverlay";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { useResponsiveScale } from "../hooks/useResponsiveScale";
 
-import { useFlowPersistStore } from "../../flow/persistStore";
+
 import { useModalStore } from "../../components/modal/modalStore";
 import { getAccentColors } from "../../modes/accents";
 import { ProfilePreviewOverlay } from "../../components/overlay/ProfilePreviewOverlay";

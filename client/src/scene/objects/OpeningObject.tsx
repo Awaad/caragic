@@ -163,7 +163,7 @@ export function OpeningObject({ tiltX, tiltY }: OpeningObjectProps) {
       }
     >
       <Icosahedron ref={outerRef} args={[1, 0]}>
-        {/* @ts-expect-error — drei MeshTransmissionMaterial loose JSX types */}
+
         <MeshTransmissionMaterial
           thickness={1.5}
           roughness={0.02}

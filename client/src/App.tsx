@@ -6,7 +6,7 @@ import { useContent } from "./api/hooks";
 import { reconcileWithSession } from "./flow/persistStore";
 import { Scene } from "./scene/Scene";
 import { Overlay } from "./components/overlay/Overlay";
-import { DebugOverlay } from "./components/DebugOverlay";
+
 import type { Phase } from "./flow/types";
 import { Farewell } from "./scene/ui/Farewell";
 import { useFlow } from "./flow/useFlow";
@@ -72,7 +72,6 @@ function FarewellGate() {
       <Scene />
       <Overlay />
       <ModalHost />
-      <DebugOverlay />
     </>
   );
 }

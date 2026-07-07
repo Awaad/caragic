@@ -1,9 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiFetch, ApiError } from './client';
 import type { 
   ContentResponse,
   ConversationSummary,
-  ChatMessage,
   MessageListResponse,
  } from './types';
 

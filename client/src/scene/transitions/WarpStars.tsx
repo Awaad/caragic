@@ -65,7 +65,7 @@ export function WarpStars() {
     if (phase === 'round' || phase === 'capturing' || phase === 'reveal') {
       const posAttr = geometry.attributes.position;
       const positions = posAttr.array as Float32Array;
-      const halfSpread = STAR_SPREAD / 2;
+      //const halfSpread = STAR_SPREAD / 2;
       for (let i = 0; i < STAR_COUNT; i++) {
         positions[i * 3 + 0] = (Math.random() - 0.5) * STAR_SPREAD;
         positions[i * 3 + 1] = (Math.random() - 0.5) * STAR_SPREAD;
