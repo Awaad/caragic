@@ -1,0 +1,113 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: caragic-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - caragic_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - caragic_internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: caragic-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - caragic_internal
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.prod
+    container_name: caragic-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
+      PHONE_HASH_KEY: ${PHONE_HASH_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      ADMIN_TOTP_SECRET: ${ADMIN_TOTP_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      DEFAULT_PHONE_REGION: ${DEFAULT_PHONE_REGION:-TR}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:-*}
+      PRELUDE_API_TOKEN: ${PRELUDE_API_TOKEN}
+      OTP_DEV_MODE: "false"
+      ENVIRONMENT: prod
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      ADMIN_PUBLIC_BASE_URL: ${ADMIN_PUBLIC_BASE_URL}
+      OWNER_JWT_TTL_MINUTES: ${OWNER_JWT_TTL_MINUTES:-480}
+      COOKIE_SECURE: "true"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=root_default"
+      - "traefik.http.routers.caragic-api.entrypoints=websecure"
+      - "traefik.http.routers.caragic-api.rule=Host(`card.gedoawad.com`) && (PathPrefix(`/api`) || PathPrefix(`/c`))"
+      - "traefik.http.routers.caragic-api.tls=true"
+      - "traefik.http.routers.caragic-api.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.caragic-api.loadbalancer.server.port=8000"
+    networks:
+      - caragic_internal
+      - root_default
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_OWNER_NAME: ${VITE_OWNER_NAME}
+    container_name: caragic-client
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=root_default"
+      - "traefik.http.routers.caragic-client.entrypoints=websecure"
+      - "traefik.http.routers.caragic-client.rule=Host(`card.gedoawad.com`) && !PathPrefix(`/api`) && !PathPrefix(`/c`) && !PathPrefix(`/admin`)"
+      - "traefik.http.routers.caragic-client.tls=true"
+      - "traefik.http.routers.caragic-client.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.caragic-client.loadbalancer.server.port=80"
+    networks:
+      - root_default
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile.prod
+    container_name: caragic-admin
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=root_default"
+      - "traefik.http.routers.caragic-admin.entrypoints=websecure"
+      - "traefik.http.routers.caragic-admin.rule=Host(`card.gedoawad.com`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.caragic-admin.tls=true"
+      - "traefik.http.routers.caragic-admin.tls.certresolver=mytlschallenge"
+      - "traefik.http.services.caragic-admin.loadbalancer.server.port=80"
+    networks:
+      - root_default
+
+volumes:
+  caragic_pg_data:
+
+networks:
+  caragic_internal:
+    driver: bridge
+  root_default:
+    external: true
