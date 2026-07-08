@@ -58,11 +58,16 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=root_default"
+      # API serves three surfaces at the root domain:
+      #   /api/*  — the JSON API
+      #   /c/*    — pre-generated visitor link tokens
+      #   /tap    — NFC card entry point (bare path, no prefix)
       - "traefik.http.routers.caragic-api.entrypoints=websecure"
-      - "traefik.http.routers.caragic-api.rule=Host(`card.gedoawad.com`) && (PathPrefix(`/api`) || PathPrefix(`/c`))"
+      - "traefik.http.routers.caragic-api.rule=Host(`card.gedoawad.com`) && (PathPrefix(`/api`) || PathPrefix(`/c`) || Path(`/tap`))"
       - "traefik.http.routers.caragic-api.tls=true"
       - "traefik.http.routers.caragic-api.tls.certresolver=mytlschallenge"
       - "traefik.http.services.caragic-api.loadbalancer.server.port=8000"
+
     networks:
       - caragic_internal
       - root_default
@@ -79,7 +84,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=root_default"
       - "traefik.http.routers.caragic-client.entrypoints=websecure"
-      - "traefik.http.routers.caragic-client.rule=Host(`card.gedoawad.com`) && !PathPrefix(`/api`) && !PathPrefix(`/c`) && !PathPrefix(`/admin`)"
+      - "traefik.http.routers.caragic-client.rule=Host(`card.gedoawad.com`) && !PathPrefix(`/api`) && !PathPrefix(`/c`) && !Path(`/tap`) && !PathPrefix(`/admin`)"
       - "traefik.http.routers.caragic-client.tls=true"
       - "traefik.http.routers.caragic-client.tls.certresolver=mytlschallenge"
       - "traefik.http.services.caragic-client.loadbalancer.server.port=80"
@@ -99,6 +104,8 @@ services:
       - "traefik.http.routers.caragic-admin.rule=Host(`card.gedoawad.com`) && PathPrefix(`/admin`)"
       - "traefik.http.routers.caragic-admin.tls=true"
       - "traefik.http.routers.caragic-admin.tls.certresolver=mytlschallenge"
+      - "traefik.http.routers.caragic-admin.middlewares=caragic-admin-strip"
+      - "traefik.http.middlewares.caragic-admin-strip.stripprefix.prefixes=/admin"
       - "traefik.http.services.caragic-admin.loadbalancer.server.port=80"
     networks:
       - root_default
