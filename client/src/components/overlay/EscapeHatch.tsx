@@ -1,11 +1,24 @@
 import { useFlow } from '../../flow/useFlow';
+import { useContent } from '../../api/hooks';
 
 export function EscapeHatch() {
-  const { setPhase } = useFlow();
+  const { setPhase, advanceRound, roundIndex } = useFlow();
+  const { data: content } = useContent();
+
+  const handleSkip = () => {
+    if (!content) return;
+    // Advance to the capture round (always last per backend invariant).
+    // Answers already recorded stay valid; skipped rounds have no answer.
+    const captureIdx = content.rounds.length - 1;
+    for (let i = roundIndex; i < captureIdx; i++) {
+      advanceRound();
+    }
+    setPhase('capturing');
+  };
 
   return (
     <button
-      onClick={() => setPhase('closed')}
+      onClick={handleSkip}
       style={{
         position: 'absolute',
         top: 24,
